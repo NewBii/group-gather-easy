@@ -244,7 +244,11 @@ const CreateEvent = () => {
   if (createdEvent) {
     return (
       <div className="container py-12 md:py-16">
-        <EventCreatedPrompt eventSlug={createdEvent.slug} eventId={createdEvent.id} />
+        <EventCreatedPrompt 
+          eventSlug={createdEvent.slug} 
+          eventId={createdEvent.id} 
+          eventTitle={form.getValues('title')}
+        />
       </div>
     );
   }

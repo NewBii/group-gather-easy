@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Check, Copy, User, ArrowRight } from 'lucide-react';
+import { Check, Copy, User, ArrowRight, Mail, Calendar } from 'lucide-react';
 import { useState } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 interface EventCreatedPromptProps {
   eventSlug: string;
   eventId: string;
+  eventTitle?: string;
 }
 
-export const EventCreatedPrompt = ({ eventSlug, eventId }: EventCreatedPromptProps) => {
+export const EventCreatedPrompt = ({ eventSlug, eventId, eventTitle = 'Event' }: EventCreatedPromptProps) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
@@ -26,6 +27,17 @@ export const EventCreatedPrompt = ({ eventSlug, eventId }: EventCreatedPromptPro
     } catch {
       toast.error(t.common.error);
     }
+  };
+
+  const handleShareEmail = () => {
+    const subject = encodeURIComponent(eventTitle);
+    const body = encodeURIComponent(`${eventUrl}`);
+    window.open(`mailto:?subject=${subject}&body=${body}`);
+  };
+
+  const handleAddToCalendar = () => {
+    const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&details=${encodeURIComponent(eventUrl)}`;
+    window.open(calendarUrl, '_blank');
   };
 
   const handleCreateAccount = () => {
@@ -51,16 +63,37 @@ export const EventCreatedPrompt = ({ eventSlug, eventId }: EventCreatedPromptPro
         </p>
       </div>
 
-      <div className="bg-card border border-border rounded-lg p-4">
-        <div className="flex items-center gap-2">
+      {/* Share Section */}
+      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-6 text-left space-y-4">
+        <h2 className="font-semibold text-foreground">{t.eventCreated.shareTitle}</h2>
+        <p className="text-sm text-muted-foreground">
+          {t.eventCreated.shareDescription}
+        </p>
+        
+        <div className="bg-background border border-border rounded-md p-3 flex items-center gap-2">
           <input
             type="text"
             value={eventUrl}
             readOnly
             className="flex-1 bg-transparent text-sm text-foreground truncate outline-none"
           />
-          <Button variant="outline" size="sm" onClick={handleCopyLink}>
+          <Button variant="ghost" size="icon" onClick={handleCopyLink} className="shrink-0">
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          </Button>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={handleCopyLink} className="flex-1 min-w-[120px]">
+            <Copy className="h-4 w-4 mr-2" />
+            {t.eventCreated.copyLink}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleShareEmail} className="flex-1 min-w-[120px]">
+            <Mail className="h-4 w-4 mr-2" />
+            {t.eventCreated.shareByEmail}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleAddToCalendar} className="flex-1 min-w-[120px]">
+            <Calendar className="h-4 w-4 mr-2" />
+            {t.eventCreated.addToCalendar}
           </Button>
         </div>
       </div>
