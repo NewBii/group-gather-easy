@@ -19,7 +19,38 @@ interface Translations {
   createEvent: {
     title: string;
     description: string;
-    comingSoon: string;
+    success: string;
+    error: string;
+    form: {
+      title: string;
+      titlePlaceholder: string;
+      description: string;
+      descriptionPlaceholder: string;
+      descriptionHint: string;
+      eventType: string;
+      selectEventType: string;
+      dayEvent: string;
+      trip: string;
+      startDate: string;
+      endDate: string;
+      pickDate: string;
+      locationType: string;
+      submit: string;
+    };
+    locationOptions: {
+      setVenues: {
+        label: string;
+        description: string;
+      };
+      suggestions: {
+        label: string;
+        description: string;
+      };
+      fairSpot: {
+        label: string;
+        description: string;
+      };
+    };
   };
   guides: {
     title: string;
@@ -68,7 +99,38 @@ export const translations: Record<Language, Translations> = {
     createEvent: {
       title: 'Créer un événement',
       description: 'Commencez à organiser votre prochain moment ensemble.',
-      comingSoon: 'Formulaire de création bientôt disponible',
+      success: 'Événement créé avec succès !',
+      error: 'Erreur lors de la création de l\'événement',
+      form: {
+        title: 'Titre de l\'événement',
+        titlePlaceholder: 'Ex: Anniversaire de Marie, Weekend à la montagne...',
+        description: 'Description',
+        descriptionPlaceholder: 'Ajoutez des détails sur votre événement...',
+        descriptionHint: 'Optionnel - Maximum 500 caractères',
+        eventType: 'Type d\'événement',
+        selectEventType: 'Sélectionnez un type',
+        dayEvent: 'Événement d\'une journée',
+        trip: 'Voyage / Séjour',
+        startDate: 'Date de début',
+        endDate: 'Date de fin',
+        pickDate: 'Choisir une date',
+        locationType: 'Comment choisir le lieu ?',
+        submit: 'Créer l\'événement',
+      },
+      locationOptions: {
+        setVenues: {
+          label: 'Lieux définis',
+          description: 'Vous proposez un ou plusieurs lieux précis, les participants votent.',
+        },
+        suggestions: {
+          label: 'Suggestions ouvertes',
+          description: 'Chacun peut proposer des idées de lieux, puis on vote ensemble.',
+        },
+        fairSpot: {
+          label: 'Point central équitable',
+          description: 'Trouvez automatiquement un lieu équidistant pour tous les participants.',
+        },
+      },
     },
     guides: {
       title: 'Guides',
@@ -115,7 +177,38 @@ export const translations: Record<Language, Translations> = {
     createEvent: {
       title: 'Create an Event',
       description: 'Start organizing your next moment together.',
-      comingSoon: 'Creation form coming soon',
+      success: 'Event created successfully!',
+      error: 'Error creating event',
+      form: {
+        title: 'Event title',
+        titlePlaceholder: 'E.g., Marie\'s birthday, Mountain weekend...',
+        description: 'Description',
+        descriptionPlaceholder: 'Add details about your event...',
+        descriptionHint: 'Optional - Maximum 500 characters',
+        eventType: 'Event type',
+        selectEventType: 'Select a type',
+        dayEvent: 'Day event',
+        trip: 'Trip / Getaway',
+        startDate: 'Start date',
+        endDate: 'End date',
+        pickDate: 'Pick a date',
+        locationType: 'How to choose the location?',
+        submit: 'Create event',
+      },
+      locationOptions: {
+        setVenues: {
+          label: 'Set venues',
+          description: 'You propose one or more specific places, participants vote.',
+        },
+        suggestions: {
+          label: 'Open suggestions',
+          description: 'Everyone can suggest place ideas, then we vote together.',
+        },
+        fairSpot: {
+          label: 'Fair spot',
+          description: 'Automatically find a location equidistant for all participants.',
+        },
+      },
     },
     guides: {
       title: 'Guides',
