@@ -1,15 +1,39 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, LogOut } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-
+import { supabase } from '@/integrations/supabase/client';
+import { User } from '@supabase/supabase-js';
 export function Header() {
   const { t } = useLanguage();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
+
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Utilisateur';
 
   const navItems = [
     { href: '/', label: t.nav.home },
@@ -48,11 +72,21 @@ export function Header() {
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-4">
           <LanguageSwitcher />
-          <Link to="/auth">
-            <Button variant="outline" size="sm">
-              {t.auth.login}
-            </Button>
-          </Link>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">{displayName}</span>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                {t.auth.logout}
+              </Button>
+            </div>
+          ) : (
+            <Link to="/auth">
+              <Button variant="outline" size="sm">
+                {t.auth.login}
+              </Button>
+            </Link>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -86,8 +120,23 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            <div className="pt-2 border-t border-border">
+            <div className="pt-2 border-t border-border flex flex-col gap-3">
               <LanguageSwitcher />
+              {user ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{displayName}</span>
+                  <Button variant="outline" size="sm" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    {t.auth.logout}
+                  </Button>
+                </div>
+              ) : (
+                <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" size="sm" className="w-full">
+                    {t.auth.login}
+                  </Button>
+                </Link>
+              )}
             </div>
           </nav>
         </div>

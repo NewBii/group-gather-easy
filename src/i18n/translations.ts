@@ -79,6 +79,7 @@ interface Translations {
   };
   auth: {
     login: string;
+    logout: string;
     signup: string;
     email: string;
     password: string;
@@ -204,6 +205,7 @@ export const translations: Record<Language, Translations> = {
     },
     auth: {
       login: 'Connexion',
+      logout: 'Déconnexion',
       signup: 'Créer un compte',
       email: 'Email',
       password: 'Mot de passe',
@@ -327,6 +329,7 @@ export const translations: Record<Language, Translations> = {
     },
     auth: {
       login: 'Log in',
+      logout: 'Log out',
       signup: 'Sign up',
       email: 'Email',
       password: 'Password',
