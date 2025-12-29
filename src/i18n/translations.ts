@@ -104,6 +104,11 @@ interface Translations {
     createAccountButton: string;
     continueAsGuest: string;
     accountLinked: string;
+    shareTitle: string;
+    shareDescription: string;
+    copyLink: string;
+    shareByEmail: string;
+    addToCalendar: string;
   };
   common: {
     loading: string;
@@ -222,6 +227,11 @@ export const translations: Record<Language, Translations> = {
       createAccountButton: 'Créer un compte',
       continueAsGuest: 'Continuer sans compte',
       accountLinked: 'Événement lié à votre compte !',
+      shareTitle: 'Partager cet événement',
+      shareDescription: 'Toute personne avec ce lien peut voir et participer. Vous pouvez toujours revenir à cet événement avec le même lien.',
+      copyLink: 'Copier le lien',
+      shareByEmail: 'Envoyer par email',
+      addToCalendar: 'Ajouter au calendrier',
     },
     common: {
       loading: 'Chargement...',
@@ -338,6 +348,11 @@ export const translations: Record<Language, Translations> = {
       createAccountButton: 'Create an account',
       continueAsGuest: 'Continue without account',
       accountLinked: 'Event linked to your account!',
+      shareTitle: 'Share this event',
+      shareDescription: 'Anyone with this link can view and participate. You can always return to this event with the same link.',
+      copyLink: 'Copy link',
+      shareByEmail: 'Share by email',
+      addToCalendar: 'Add to calendar',
     },
     common: {
       loading: 'Loading...',
