@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      date_options: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          event_id: string
+          id: string
+          start_date: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          event_id: string
+          id?: string
+          start_date: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          event_id?: string
+          id?: string
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "date_options_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string

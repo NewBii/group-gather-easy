@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, MapPin, Users, Sparkles } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, Users, Sparkles, X, Plus } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
+import { Badge } from '@/components/ui/badge';
 import {
   Form,
   FormControl,
@@ -37,12 +38,16 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+interface DatePeriod {
+  id: string;
+  startDate: Date | undefined;
+  endDate: Date | undefined;
+}
+
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required').max(100),
   description: z.string().max(500).optional(),
   eventType: z.enum(['day_event', 'trip']),
-  dateRangeStart: z.date({ required_error: 'Start date is required' }),
-  dateRangeEnd: z.date({ required_error: 'End date is required' }),
   locationType: z.enum(['set_venues', 'suggestions', 'fair_spot']),
 });
 
@@ -52,10 +57,22 @@ const generateSlug = () => {
   return Math.random().toString(36).substring(2, 10);
 };
 
+const generateId = () => {
+  return Math.random().toString(36).substring(2, 10);
+};
+
 const CreateEvent = () => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Day event: multiple individual dates
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  
+  // Trip: multiple date periods
+  const [datePeriods, setDatePeriods] = useState<DatePeriod[]>([
+    { id: generateId(), startDate: undefined, endDate: undefined }
+  ]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -67,19 +84,97 @@ const CreateEvent = () => {
     },
   });
 
+  const eventType = form.watch('eventType');
+
+  // Reset date selections when event type changes
+  useEffect(() => {
+    setSelectedDates([]);
+    setDatePeriods([{ id: generateId(), startDate: undefined, endDate: undefined }]);
+  }, [eventType]);
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return;
+    
+    const dateExists = selectedDates.some(
+      (d) => format(d, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+    );
+    
+    if (dateExists) {
+      setSelectedDates(selectedDates.filter(
+        (d) => format(d, 'yyyy-MM-dd') !== format(date, 'yyyy-MM-dd')
+      ));
+    } else {
+      setSelectedDates([...selectedDates, date].sort((a, b) => a.getTime() - b.getTime()));
+    }
+  };
+
+  const removeDate = (dateToRemove: Date) => {
+    setSelectedDates(selectedDates.filter(
+      (d) => format(d, 'yyyy-MM-dd') !== format(dateToRemove, 'yyyy-MM-dd')
+    ));
+  };
+
+  const addDatePeriod = () => {
+    setDatePeriods([...datePeriods, { id: generateId(), startDate: undefined, endDate: undefined }]);
+  };
+
+  const removeDatePeriod = (id: string) => {
+    if (datePeriods.length > 1) {
+      setDatePeriods(datePeriods.filter((p) => p.id !== id));
+    }
+  };
+
+  const updateDatePeriod = (id: string, field: 'startDate' | 'endDate', value: Date | undefined) => {
+    setDatePeriods(datePeriods.map((p) => 
+      p.id === id ? { ...p, [field]: value } : p
+    ));
+  };
+
+  const validateDates = (): boolean => {
+    if (eventType === 'day_event') {
+      if (selectedDates.length === 0) {
+        toast.error(t.createEvent.form.validation.minOneDateRequired);
+        return false;
+      }
+    } else {
+      const validPeriods = datePeriods.filter((p) => p.startDate && p.endDate);
+      if (validPeriods.length === 0) {
+        toast.error(t.createEvent.form.validation.minOnePeriodRequired);
+        return false;
+      }
+    }
+    return true;
+  };
+
   const onSubmit = async (values: FormValues) => {
+    if (!validateDates()) return;
+    
     setIsSubmitting(true);
     try {
       const slug = generateSlug();
       
-      const { data, error } = await supabase
+      // Calculate date range bounds
+      let dateRangeStart: Date;
+      let dateRangeEnd: Date;
+      
+      if (eventType === 'day_event') {
+        dateRangeStart = selectedDates[0];
+        dateRangeEnd = selectedDates[selectedDates.length - 1];
+      } else {
+        const validPeriods = datePeriods.filter((p) => p.startDate && p.endDate);
+        const allDates = validPeriods.flatMap((p) => [p.startDate!, p.endDate!]);
+        dateRangeStart = new Date(Math.min(...allDates.map((d) => d.getTime())));
+        dateRangeEnd = new Date(Math.max(...allDates.map((d) => d.getTime())));
+      }
+      
+      const { data: eventData, error: eventError } = await supabase
         .from('events')
         .insert({
           title: values.title,
           description: values.description || null,
           event_type: values.eventType,
-          date_range_start: format(values.dateRangeStart, 'yyyy-MM-dd'),
-          date_range_end: format(values.dateRangeEnd, 'yyyy-MM-dd'),
+          date_range_start: format(dateRangeStart, 'yyyy-MM-dd'),
+          date_range_end: format(dateRangeEnd, 'yyyy-MM-dd'),
           location_type: values.locationType,
           unique_slug: slug,
           status: 'active',
@@ -87,7 +182,28 @@ const CreateEvent = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (eventError) throw eventError;
+
+      // Insert date options
+      const dateOptionsToInsert = eventType === 'day_event'
+        ? selectedDates.map((date) => ({
+            event_id: eventData.id,
+            start_date: format(date, 'yyyy-MM-dd'),
+            end_date: null,
+          }))
+        : datePeriods
+            .filter((p) => p.startDate && p.endDate)
+            .map((period) => ({
+              event_id: eventData.id,
+              start_date: format(period.startDate!, 'yyyy-MM-dd'),
+              end_date: format(period.endDate!, 'yyyy-MM-dd'),
+            }));
+
+      const { error: dateOptionsError } = await supabase
+        .from('date_options')
+        .insert(dateOptionsToInsert);
+
+      if (dateOptionsError) throw dateOptionsError;
 
       toast.success(t.createEvent.success);
       navigate(`/event/${slug}`);
@@ -201,93 +317,160 @@ const CreateEvent = () => {
               )}
             />
 
-            {/* Date Range */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="dateRangeStart"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>{t.createEvent.form.startDate}</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              'w-full pl-3 text-left font-normal',
-                              !field.value && 'text-muted-foreground'
-                            )}
+            {/* Date Selection - Day Event */}
+            {eventType === 'day_event' && (
+              <div className="space-y-4">
+                <Label>{t.createEvent.form.selectDatesForVoting}</Label>
+                <div className="border border-border rounded-lg p-4 bg-card">
+                  <Calendar
+                    mode="multiple"
+                    selected={selectedDates}
+                    onSelect={(dates) => setSelectedDates(dates || [])}
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    className="pointer-events-auto mx-auto"
+                  />
+                </div>
+                
+                {selectedDates.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">
+                      {t.createEvent.form.selectedDates} ({selectedDates.length})
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedDates.map((date) => (
+                        <Badge
+                          key={format(date, 'yyyy-MM-dd')}
+                          variant="secondary"
+                          className="flex items-center gap-1 px-3 py-1"
+                        >
+                          {format(date, 'PPP')}
+                          <button
+                            type="button"
+                            onClick={() => removeDate(date)}
+                            className="ml-1 hover:text-destructive"
                           >
-                            {field.value ? (
-                              format(field.value, 'PPP', { locale: language === 'fr' ? undefined : undefined })
-                            ) : (
-                              <span>{t.createEvent.form.pickDate}</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date()}
-                          initialFocus
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
                 )}
-              />
+              </div>
+            )}
 
-              <FormField
-                control={form.control}
-                name="dateRangeEnd"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>{t.createEvent.form.endDate}</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
+            {/* Date Selection - Trip */}
+            {eventType === 'trip' && (
+              <div className="space-y-4">
+                <Label>{t.createEvent.form.datePeriods}</Label>
+                
+                <div className="space-y-4">
+                  {datePeriods.map((period, index) => (
+                    <div
+                      key={period.id}
+                      className="border border-border rounded-lg p-4 bg-card space-y-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {t.createEvent.form.period} {index + 1}
+                        </span>
+                        {datePeriods.length > 1 && (
                           <Button
-                            variant="outline"
-                            className={cn(
-                              'w-full pl-3 text-left font-normal',
-                              !field.value && 'text-muted-foreground'
-                            )}
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeDatePeriod(period.id)}
+                            className="text-destructive hover:text-destructive"
                           >
-                            {field.value ? (
-                              format(field.value, 'PPP')
-                            ) : (
-                              <span>{t.createEvent.form.pickDate}</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            <X className="h-4 w-4 mr-1" />
+                            {t.createEvent.form.remove}
                           </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => {
-                            const startDate = form.getValues('dateRangeStart');
-                            return date < new Date() || (startDate && date < startDate);
-                          }}
-                          initialFocus
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                        )}
+                      </div>
+                      
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label className="text-sm">{t.createEvent.form.startDate}</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  'w-full pl-3 text-left font-normal',
+                                  !period.startDate && 'text-muted-foreground'
+                                )}
+                              >
+                                {period.startDate ? (
+                                  format(period.startDate, 'PPP')
+                                ) : (
+                                  <span>{t.createEvent.form.pickDate}</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={period.startDate}
+                                onSelect={(date) => updateDatePeriod(period.id, 'startDate', date)}
+                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-sm">{t.createEvent.form.endDate}</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  'w-full pl-3 text-left font-normal',
+                                  !period.endDate && 'text-muted-foreground'
+                                )}
+                              >
+                                {period.endDate ? (
+                                  format(period.endDate, 'PPP')
+                                ) : (
+                                  <span>{t.createEvent.form.pickDate}</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={period.endDate}
+                                onSelect={(date) => updateDatePeriod(period.id, 'endDate', date)}
+                                disabled={(date) => {
+                                  const today = new Date(new Date().setHours(0, 0, 0, 0));
+                                  return date < today || (period.startDate && date < period.startDate);
+                                }}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addDatePeriod}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t.createEvent.form.addDatePeriod}
+                </Button>
+              </div>
+            )}
 
             {/* Location Type */}
             <FormField

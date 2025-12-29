@@ -36,6 +36,16 @@ interface Translations {
       pickDate: string;
       locationType: string;
       submit: string;
+      selectDatesForVoting: string;
+      selectedDates: string;
+      datePeriods: string;
+      period: string;
+      addDatePeriod: string;
+      remove: string;
+      validation: {
+        minOneDateRequired: string;
+        minOnePeriodRequired: string;
+      };
     };
     locationOptions: {
       setVenues: {
@@ -116,6 +126,16 @@ export const translations: Record<Language, Translations> = {
         pickDate: 'Choisir une date',
         locationType: 'Comment choisir le lieu ?',
         submit: 'Créer l\'événement',
+        selectDatesForVoting: 'Sélectionnez les dates pour le vote',
+        selectedDates: 'Dates sélectionnées',
+        datePeriods: 'Périodes proposées',
+        period: 'Période',
+        addDatePeriod: 'Ajouter une période',
+        remove: 'Supprimer',
+        validation: {
+          minOneDateRequired: 'Veuillez sélectionner au moins une date',
+          minOnePeriodRequired: 'Veuillez définir au moins une période complète',
+        },
       },
       locationOptions: {
         setVenues: {
@@ -194,6 +214,16 @@ export const translations: Record<Language, Translations> = {
         pickDate: 'Pick a date',
         locationType: 'How to choose the location?',
         submit: 'Create event',
+        selectDatesForVoting: 'Select dates for voting',
+        selectedDates: 'Selected dates',
+        datePeriods: 'Date periods',
+        period: 'Period',
+        addDatePeriod: 'Add a period',
+        remove: 'Remove',
+        validation: {
+          minOneDateRequired: 'Please select at least one date',
+          minOnePeriodRequired: 'Please define at least one complete period',
+        },
       },
       locationOptions: {
         setVenues: {
