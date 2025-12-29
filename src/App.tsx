@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import CreateEvent from "./pages/CreateEvent";
 import Guides from "./pages/Guides";
 import Event from "./pages/Event";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
               <Route path="/create" element={<CreateEvent />} />
               <Route path="/guides" element={<Guides />} />
               <Route path="/event/:id" element={<Event />} />
+              <Route path="/auth" element={<Auth />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>

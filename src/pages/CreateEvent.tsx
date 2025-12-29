@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { Calendar as CalendarIcon, MapPin, Users, Sparkles, X, Plus } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { EventCreatedPrompt } from '@/components/EventCreatedPrompt';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -65,6 +66,9 @@ const CreateEvent = () => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Success state
+  const [createdEvent, setCreatedEvent] = useState<{ id: string; slug: string } | null>(null);
   
   // Day event: multiple individual dates
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
@@ -205,8 +209,8 @@ const CreateEvent = () => {
 
       if (dateOptionsError) throw dateOptionsError;
 
-      toast.success(t.createEvent.success);
-      navigate(`/event/${slug}`);
+      // Show success prompt instead of navigating
+      setCreatedEvent({ id: eventData.id, slug: slug });
     } catch (error) {
       console.error('Error creating event:', error);
       toast.error(t.createEvent.error);
@@ -235,6 +239,15 @@ const CreateEvent = () => {
       description: t.createEvent.locationOptions.fairSpot.description,
     },
   ];
+
+  // Show success prompt if event was created
+  if (createdEvent) {
+    return (
+      <div className="container py-12 md:py-16">
+        <EventCreatedPrompt eventSlug={createdEvent.slug} eventId={createdEvent.id} />
+      </div>
+    );
+  }
 
   return (
     <div className="container py-12 md:py-16">
