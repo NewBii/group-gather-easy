@@ -45,9 +45,14 @@ export function Header() {
           ))}
         </nav>
 
-        {/* Desktop Language Switcher */}
-        <div className="hidden md:block">
+        {/* Desktop Actions */}
+        <div className="hidden md:flex items-center gap-4">
           <LanguageSwitcher />
+          <Link to="/auth">
+            <Button variant="outline" size="sm">
+              {t.auth.login}
+            </Button>
+          </Link>
         </div>
 
         {/* Mobile Menu Button */}
