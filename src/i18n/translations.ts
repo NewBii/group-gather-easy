@@ -5,6 +5,7 @@ interface Translations {
     home: string;
     createEvent: string;
     guides: string;
+    myEvents: string;
   };
   home: {
     headline: string;
@@ -113,6 +114,13 @@ interface Translations {
     shareByEmail: string;
     addToCalendar: string;
   };
+  myEvents: {
+    title: string;
+    createNew: string;
+    noEvents: string;
+    createFirst: string;
+    noDescription: string;
+  };
   common: {
     loading: string;
     error: string;
@@ -131,6 +139,7 @@ export const translations: Record<Language, Translations> = {
       home: 'Accueil',
       createEvent: 'Créer un événement',
       guides: 'Guides',
+      myEvents: 'Mes événements',
     },
     home: {
       headline: 'Organisez vos moments ensemble, simplement',
@@ -239,6 +248,13 @@ export const translations: Record<Language, Translations> = {
       shareByEmail: 'Email',
       addToCalendar: 'Calendrier',
     },
+    myEvents: {
+      title: 'Mes événements',
+      createNew: 'Nouvel événement',
+      noEvents: 'Vous n\'avez pas encore créé d\'événement.',
+      createFirst: 'Créer mon premier événement',
+      noDescription: 'Aucune description',
+    },
     common: {
       loading: 'Chargement...',
       error: 'Une erreur est survenue',
@@ -255,6 +271,7 @@ export const translations: Record<Language, Translations> = {
       home: 'Home',
       createEvent: 'Create Event',
       guides: 'Guides',
+      myEvents: 'My Events',
     },
     home: {
       headline: 'Organize your moments together, simply',
@@ -362,6 +379,13 @@ export const translations: Record<Language, Translations> = {
       copyLink: 'Copy',
       shareByEmail: 'Email',
       addToCalendar: 'Calendar',
+    },
+    myEvents: {
+      title: 'My Events',
+      createNew: 'New event',
+      noEvents: 'You haven\'t created any events yet.',
+      createFirst: 'Create my first event',
+      noDescription: 'No description',
     },
     common: {
       loading: 'Loading...',
