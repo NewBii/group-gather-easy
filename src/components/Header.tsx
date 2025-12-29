@@ -39,6 +39,7 @@ export function Header() {
     { href: '/', label: t.nav.home },
     { href: '/create', label: t.nav.createEvent },
     { href: '/guides', label: t.nav.guides },
+    ...(user ? [{ href: '/my-events', label: t.nav.myEvents }] : []),
   ];
 
   const isActive = (path: string) => location.pathname === path;
