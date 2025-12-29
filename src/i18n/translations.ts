@@ -77,6 +77,34 @@ interface Translations {
     notFound: string;
     backHome: string;
   };
+  auth: {
+    login: string;
+    signup: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+    submitLogin: string;
+    submitSignup: string;
+    switchToSignup: string;
+    switchToLogin: string;
+    errors: {
+      invalidEmail: string;
+      passwordTooShort: string;
+      passwordMismatch: string;
+      emailInUse: string;
+      invalidCredentials: string;
+    };
+  };
+  eventCreated: {
+    title: string;
+    subtitle: string;
+    linkCopied: string;
+    createAccountTitle: string;
+    createAccountDescription: string;
+    createAccountButton: string;
+    continueAsGuest: string;
+    accountLinked: string;
+  };
   common: {
     loading: string;
     error: string;
@@ -167,6 +195,34 @@ export const translations: Record<Language, Translations> = {
       notFound: 'Événement non trouvé',
       backHome: 'Retour à l\'accueil',
     },
+    auth: {
+      login: 'Connexion',
+      signup: 'Créer un compte',
+      email: 'Email',
+      password: 'Mot de passe',
+      confirmPassword: 'Confirmer le mot de passe',
+      submitLogin: 'Se connecter',
+      submitSignup: 'S\'inscrire',
+      switchToSignup: 'Pas encore de compte ? S\'inscrire',
+      switchToLogin: 'Déjà un compte ? Se connecter',
+      errors: {
+        invalidEmail: 'Email invalide',
+        passwordTooShort: 'Le mot de passe doit contenir au moins 6 caractères',
+        passwordMismatch: 'Les mots de passe ne correspondent pas',
+        emailInUse: 'Cet email est déjà utilisé',
+        invalidCredentials: 'Email ou mot de passe incorrect',
+      },
+    },
+    eventCreated: {
+      title: 'Événement créé !',
+      subtitle: 'Partagez ce lien avec vos participants',
+      linkCopied: 'Lien copié !',
+      createAccountTitle: 'Gérer votre événement',
+      createAccountDescription: 'Créez un compte pour modifier, suivre les réponses et recevoir des notifications.',
+      createAccountButton: 'Créer un compte',
+      continueAsGuest: 'Continuer sans compte',
+      accountLinked: 'Événement lié à votre compte !',
+    },
     common: {
       loading: 'Chargement...',
       error: 'Une erreur est survenue',
@@ -254,6 +310,34 @@ export const translations: Record<Language, Translations> = {
     event: {
       notFound: 'Event not found',
       backHome: 'Back to home',
+    },
+    auth: {
+      login: 'Log in',
+      signup: 'Sign up',
+      email: 'Email',
+      password: 'Password',
+      confirmPassword: 'Confirm password',
+      submitLogin: 'Log in',
+      submitSignup: 'Sign up',
+      switchToSignup: 'No account yet? Sign up',
+      switchToLogin: 'Already have an account? Log in',
+      errors: {
+        invalidEmail: 'Invalid email',
+        passwordTooShort: 'Password must be at least 6 characters',
+        passwordMismatch: 'Passwords do not match',
+        emailInUse: 'This email is already in use',
+        invalidCredentials: 'Invalid email or password',
+      },
+    },
+    eventCreated: {
+      title: 'Event created!',
+      subtitle: 'Share this link with your participants',
+      linkCopied: 'Link copied!',
+      createAccountTitle: 'Manage your event',
+      createAccountDescription: 'Create an account to edit, track responses, and receive notifications.',
+      createAccountButton: 'Create an account',
+      continueAsGuest: 'Continue without account',
+      accountLinked: 'Event linked to your account!',
     },
     common: {
       loading: 'Loading...',
