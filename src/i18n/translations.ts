@@ -94,6 +94,8 @@ interface Translations {
       emailInUse: string;
       invalidCredentials: string;
     };
+    continueWithGoogle: string;
+    orContinueWith: string;
   };
   eventCreated: {
     title: string;
@@ -217,6 +219,8 @@ export const translations: Record<Language, Translations> = {
         emailInUse: 'Cet email est déjà utilisé',
         invalidCredentials: 'Email ou mot de passe incorrect',
       },
+      continueWithGoogle: 'Continuer avec Google',
+      orContinueWith: 'ou',
     },
     eventCreated: {
       title: 'Événement créé !',
@@ -338,6 +342,8 @@ export const translations: Record<Language, Translations> = {
         emailInUse: 'This email is already in use',
         invalidCredentials: 'Invalid email or password',
       },
+      continueWithGoogle: 'Continue with Google',
+      orContinueWith: 'or',
     },
     eventCreated: {
       title: 'Event created!',
