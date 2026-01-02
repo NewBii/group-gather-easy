@@ -71,12 +71,20 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Schema for validating pending event claim from localStorage
+  const pendingClaimSchema = z.object({
+    eventId: z.string().uuid(),
+    slug: z.string().min(1).max(100),
+  });
+
   const claimPendingEventAndRedirect = async (userId: string) => {
     const pendingClaim = localStorage.getItem('pendingEventClaim');
     
     if (pendingClaim) {
       try {
-        const { eventId, slug } = JSON.parse(pendingClaim);
+        const parsed = JSON.parse(pendingClaim);
+        const validated = pendingClaimSchema.parse(parsed);
+        const { eventId, slug } = validated;
         
         const { error } = await supabase
           .from('events')
