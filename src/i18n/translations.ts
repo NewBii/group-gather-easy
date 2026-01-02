@@ -49,35 +49,18 @@ interface Translations {
       };
     };
     locationOptions: {
-      setVenues: {
-        label: string;
-        description: string;
-      };
-      suggestions: {
-        label: string;
-        description: string;
-      };
-      fairSpot: {
-        label: string;
-        description: string;
-      };
+      setVenues: { label: string; description: string; };
+      suggestions: { label: string; description: string; };
+      fairSpot: { label: string; description: string; };
     };
   };
   guides: {
     title: string;
     description: string;
-    categories: {
-      friends: string;
-      family: string;
-      birthdays: string;
-      tips: string;
-    };
+    categories: { friends: string; family: string; birthdays: string; tips: string; };
     comingSoon: string;
   };
-  event: {
-    notFound: string;
-    backHome: string;
-  };
+  event: { notFound: string; backHome: string; };
   auth: {
     login: string;
     logout: string;
@@ -89,13 +72,7 @@ interface Translations {
     submitSignup: string;
     switchToSignup: string;
     switchToLogin: string;
-    errors: {
-      invalidEmail: string;
-      passwordTooShort: string;
-      passwordMismatch: string;
-      emailInUse: string;
-      invalidCredentials: string;
-    };
+    errors: { invalidEmail: string; passwordTooShort: string; passwordMismatch: string; emailInUse: string; invalidCredentials: string; };
     continueWithGoogle: string;
     orContinueWith: string;
   };
@@ -114,22 +91,87 @@ interface Translations {
     shareByEmail: string;
     addToCalendar: string;
   };
-  myEvents: {
-    title: string;
-    createNew: string;
-    noEvents: string;
-    createFirst: string;
-    noDescription: string;
-  };
-  common: {
+  myEvents: { title: string; createNew: string; noEvents: string; createFirst: string; noDescription: string; };
+  common: { loading: string; error: string; back: string; cancel: string; };
+  notFound: { title: string; description: string; backHome: string; };
+  eventPage: {
     loading: string;
-    error: string;
-    back: string;
-  };
-  notFound: {
-    title: string;
-    description: string;
-    backHome: string;
+    notFound: string;
+    notFoundDescription: string;
+    status: { active: string; finalized: string; cancelled: string; };
+    locationType: { setVenues: string; suggestions: string; fairSpot: string; };
+    share: { button: string; copied: string; };
+    join: {
+      title: string;
+      description: string;
+      yourName: string;
+      namePlaceholder: string;
+      yourEmail: string;
+      emailPlaceholder: string;
+      joinButton: string;
+      success: string;
+      error: string;
+      welcomeBack: string;
+      orLogin: string;
+      orCreateAccount: string;
+      or: string;
+    };
+    dateVoting: {
+      title: string;
+      yes: string;
+      no: string;
+      maybe: string;
+      votes: string;
+      bestDate: string;
+      noDates: string;
+      joinFirst: string;
+      voteError: string;
+    };
+    activities: {
+      title: string;
+      addNew: string;
+      namePlaceholder: string;
+      descriptionPlaceholder: string;
+      add: string;
+      noActivities: string;
+      joinFirst: string;
+      addSuccess: string;
+      addError: string;
+      voteError: string;
+    };
+    location: {
+      title: string;
+      addSuggestion: string;
+      namePlaceholder: string;
+      addressPlaceholder: string;
+      add: string;
+      noLocations: string;
+      joinFirst: string;
+      addSuccess: string;
+      addError: string;
+      voteError: string;
+      fairSpotExplanation: string;
+      yourLocation: string;
+      locationPlaceholder: string;
+      transportMode: string;
+      transportModes: { car: string; publicTransport: string; bike: string; walk: string; };
+      saveLocation: string;
+      locationSaved: string;
+      locationError: string;
+      participantsWithLocation: string;
+    };
+    participants: {
+      title: string;
+      noParticipants: string;
+      you: string;
+      organizer: string;
+    };
+    results: {
+      title: string;
+      topDate: string;
+      topActivity: string;
+      topLocation: string;
+    };
   };
 }
 
