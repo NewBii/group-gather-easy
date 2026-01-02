@@ -159,6 +159,15 @@ interface Translations {
       locationSaved: string;
       locationError: string;
       participantsWithLocation: string;
+      enterAddress: string;
+      noResults: string;
+      confirmLocation: string;
+      updateLocation: string;
+      fairMeetingPoint: string;
+      calculatingMeetingPoint: string;
+      everyoneLocated: string;
+      waitingForLocations: string;
+      participantsOnMap: string;
     };
     participants: {
       title: string;
@@ -373,6 +382,15 @@ export const translations: Record<Language, Translations> = {
         locationSaved: 'Localisation enregistrée !',
         locationError: 'Erreur lors de l\'enregistrement',
         participantsWithLocation: '{count} participant(s) ont partagé leur localisation',
+        enterAddress: 'Entrez votre adresse...',
+        noResults: 'Aucune adresse trouvée',
+        confirmLocation: 'Confirmer cette adresse',
+        updateLocation: 'Modifier ma localisation',
+        fairMeetingPoint: 'Point de rendez-vous équitable',
+        calculatingMeetingPoint: 'Calcul du point de rencontre...',
+        everyoneLocated: 'Tous les participants ont partagé leur localisation !',
+        waitingForLocations: '{count} participant(s) n\'ont pas encore partagé leur localisation',
+        participantsOnMap: 'Participants sur la carte',
       },
       participants: {
         title: 'Participants',
@@ -585,6 +603,15 @@ export const translations: Record<Language, Translations> = {
         locationSaved: 'Location saved!',
         locationError: 'Error saving location',
         participantsWithLocation: '{count} participant(s) shared their location',
+        enterAddress: 'Enter your address...',
+        noResults: 'No address found',
+        confirmLocation: 'Confirm this location',
+        updateLocation: 'Update my location',
+        fairMeetingPoint: 'Fair meeting point',
+        calculatingMeetingPoint: 'Calculating meeting point...',
+        everyoneLocated: 'All participants have shared their location!',
+        waitingForLocations: '{count} participant(s) haven\'t shared their location yet',
+        participantsOnMap: 'Participants on map',
       },
       participants: {
         title: 'Participants',
