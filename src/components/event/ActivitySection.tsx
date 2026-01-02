@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Check, X, HelpCircle, Plus, Sparkles } from 'lucide-react';
+import { Check, X, HelpCircle, Plus, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,7 +41,8 @@ export const ActivitySection = ({
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [voting, setVoting] = useState<string | null>(null);
+  const [pendingVotes, setPendingVotes] = useState<Map<string, VoteType>>(new Map());
+  const [isSaving, setIsSaving] = useState(false);
 
   const form = useForm<ActivityFormValues>({
     resolver: zodResolver(activitySchema),
@@ -60,10 +61,94 @@ export const ActivitySection = ({
     };
   };
 
-  const getCurrentVote = (activityId: string): VoteType | null => {
+  const getSavedVote = (activityId: string): VoteType | null => {
     if (!participantId) return null;
     const vote = activityVotes.find(v => v.activity_id === activityId && v.participant_id === participantId);
     return vote?.vote || null;
+  };
+
+  const getDisplayVote = (activityId: string): VoteType | null => {
+    return pendingVotes.get(activityId) ?? getSavedVote(activityId);
+  };
+
+  const isPending = (activityId: string): boolean => {
+    const pending = pendingVotes.get(activityId);
+    const saved = getSavedVote(activityId);
+    return pending !== undefined && pending !== saved;
+  };
+
+  const handleVoteChange = (activityId: string, vote: VoteType) => {
+    if (!participantId) {
+      toast({
+        title: t.eventPage.activities.joinFirst,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setPendingVotes(prev => {
+      const next = new Map(prev);
+      const saved = getSavedVote(activityId);
+      if (vote === saved) {
+        next.delete(activityId);
+      } else {
+        next.set(activityId, vote);
+      }
+      return next;
+    });
+  };
+
+  const pendingCount = useMemo(() => {
+    return Array.from(pendingVotes.entries()).filter(([id, vote]) => {
+      const saved = getSavedVote(id);
+      return vote !== saved;
+    }).length;
+  }, [pendingVotes, activityVotes, participantId]);
+
+  const confirmVotes = async () => {
+    if (!participantId || pendingCount === 0) return;
+
+    setIsSaving(true);
+    try {
+      const promises = Array.from(pendingVotes.entries()).map(async ([activityId, vote]) => {
+        const existing = activityVotes.find(
+          v => v.activity_id === activityId && v.participant_id === participantId
+        );
+
+        if (existing) {
+          const { error } = await supabase
+            .from('activity_votes')
+            .update({ vote })
+            .eq('id', existing.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('activity_votes')
+            .insert({
+              activity_id: activityId,
+              participant_id: participantId,
+              vote,
+            });
+          if (error) throw error;
+        }
+      });
+
+      await Promise.all(promises);
+      setPendingVotes(new Map());
+      toast({ title: t.eventPage.activities.saved });
+    } catch (err) {
+      console.error('Error saving votes:', err);
+      toast({
+        title: t.eventPage.activities.voteError,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const resetChanges = () => {
+    setPendingVotes(new Map());
   };
 
   const handleAddActivity = async (values: ActivityFormValues) => {
@@ -102,51 +187,6 @@ export const ActivitySection = ({
       });
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleVote = async (activityId: string, vote: VoteType) => {
-    if (!participantId) {
-      toast({
-        title: t.eventPage.activities.joinFirst,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setVoting(activityId);
-
-    try {
-      const existingVote = activityVotes.find(
-        v => v.activity_id === activityId && v.participant_id === participantId
-      );
-
-      if (existingVote) {
-        const { error } = await supabase
-          .from('activity_votes')
-          .update({ vote })
-          .eq('id', existingVote.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('activity_votes')
-          .insert({
-            activity_id: activityId,
-            participant_id: participantId,
-            vote,
-          });
-
-        if (error) throw error;
-      }
-    } catch (err) {
-      console.error('Error voting:', err);
-      toast({
-        title: t.eventPage.activities.voteError,
-        variant: 'destructive',
-      });
-    } finally {
-      setVoting(null);
     }
   };
 
@@ -237,84 +277,118 @@ export const ActivitySection = ({
             {t.eventPage.activities.noActivities}
           </p>
         ) : (
-          sortedActivities.map(activity => {
-            const counts = getVoteCounts(activity.id);
-            const currentVote = getCurrentVote(activity.id);
-            const isBest = bestYesCount > 0 && counts.yes === bestYesCount;
+          <>
+            {sortedActivities.map(activity => {
+              const counts = getVoteCounts(activity.id);
+              const currentVote = getDisplayVote(activity.id);
+              const hasPending = isPending(activity.id);
+              const isBest = bestYesCount > 0 && counts.yes === bestYesCount;
 
-            return (
-              <div 
-                key={activity.id} 
-                className={cn(
-                  "p-4 rounded-lg border transition-colors",
-                  isBest && "border-primary bg-primary/5"
-                )}
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex-1">
-                    <p className={cn("font-medium", isBest && "text-primary")}>
-                      {activity.name}
-                    </p>
-                    {activity.description && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {activity.description}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Check className="h-3 w-3 text-green-600" />
-                        {counts.yes}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <HelpCircle className="h-3 w-3 text-yellow-600" />
-                        {counts.maybe}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <X className="h-3 w-3 text-red-600" />
-                        {counts.no}
-                      </span>
+              return (
+                <div 
+                  key={activity.id} 
+                  className={cn(
+                    "p-4 rounded-lg border transition-colors",
+                    isBest && "border-primary bg-primary/5",
+                    hasPending && "border-dashed border-amber-500 bg-amber-50/50 dark:bg-amber-950/20"
+                  )}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className={cn("font-medium", isBest && "text-primary")}>
+                          {activity.name}
+                        </p>
+                        {hasPending && (
+                          <span className="text-xs text-amber-600 bg-amber-100 dark:bg-amber-900/50 px-1.5 py-0.5 rounded">
+                            {t.eventPage.activities.pendingChange}
+                          </span>
+                        )}
+                      </div>
+                      {activity.description && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {activity.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Check className="h-3 w-3 text-green-600" />
+                          {counts.yes}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <HelpCircle className="h-3 w-3 text-yellow-600" />
+                          {counts.maybe}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <X className="h-3 w-3 text-red-600" />
+                          {counts.no}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={currentVote === 'yes' ? 'default' : 'outline'}
+                        className={cn(
+                          currentVote === 'yes' && 'bg-green-600 hover:bg-green-700'
+                        )}
+                        onClick={() => handleVoteChange(activity.id, 'yes')}
+                        disabled={!participantId || isSaving}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={currentVote === 'maybe' ? 'default' : 'outline'}
+                        className={cn(
+                          currentVote === 'maybe' && 'bg-yellow-600 hover:bg-yellow-700'
+                        )}
+                        onClick={() => handleVoteChange(activity.id, 'maybe')}
+                        disabled={!participantId || isSaving}
+                      >
+                        <HelpCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={currentVote === 'no' ? 'default' : 'outline'}
+                        className={cn(
+                          currentVote === 'no' && 'bg-red-600 hover:bg-red-700'
+                        )}
+                        onClick={() => handleVoteChange(activity.id, 'no')}
+                        disabled={!participantId || isSaving}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
+                </div>
+              );
+            })}
 
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant={currentVote === 'yes' ? 'default' : 'outline'}
-                      className={cn(
-                        currentVote === 'yes' && 'bg-green-600 hover:bg-green-700'
-                      )}
-                      onClick={() => handleVote(activity.id, 'yes')}
-                      disabled={voting === activity.id || !participantId}
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={currentVote === 'maybe' ? 'default' : 'outline'}
-                      className={cn(
-                        currentVote === 'maybe' && 'bg-yellow-600 hover:bg-yellow-700'
-                      )}
-                      onClick={() => handleVote(activity.id, 'maybe')}
-                      disabled={voting === activity.id || !participantId}
-                    >
-                      <HelpCircle className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={currentVote === 'no' ? 'default' : 'outline'}
-                      className={cn(
-                        currentVote === 'no' && 'bg-red-600 hover:bg-red-700'
-                      )}
-                      onClick={() => handleVote(activity.id, 'no')}
-                      disabled={voting === activity.id || !participantId}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
+            {pendingCount > 0 && (
+              <div className="flex items-center justify-between pt-4 border-t">
+                <span className="text-sm text-muted-foreground">
+                  {t.eventPage.activities.unsavedChanges.replace('{count}', String(pendingCount))}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={resetChanges} disabled={isSaving}>
+                    {t.eventPage.activities.reset}
+                  </Button>
+                  <Button size="sm" onClick={confirmVotes} disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {t.eventPage.activities.saving}
+                      </>
+                    ) : (
+                      t.eventPage.activities.confirmVotes
+                    )}
+                  </Button>
                 </div>
               </div>
-            );
-          })
+            )}
+          </>
         )}
       </CardContent>
     </Card>

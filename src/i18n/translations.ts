@@ -144,6 +144,12 @@ interface Translations {
       addSuccess: string;
       addError: string;
       voteError: string;
+      confirmVotes: string;
+      unsavedChanges: string;
+      reset: string;
+      saving: string;
+      saved: string;
+      pendingChange: string;
     };
     location: {
       title: string;
@@ -380,6 +386,12 @@ export const translations: Record<Language, Translations> = {
         addSuccess: 'Activité ajoutée !',
         addError: 'Erreur lors de l\'ajout',
         voteError: 'Erreur lors du vote',
+        confirmVotes: 'Confirmer mes votes',
+        unsavedChanges: '{count} modification(s) non enregistrée(s)',
+        reset: 'Annuler',
+        saving: 'Enregistrement...',
+        saved: 'Votes enregistrés !',
+        pendingChange: 'En attente',
       },
       location: {
         title: 'Lieu',
@@ -614,6 +626,12 @@ export const translations: Record<Language, Translations> = {
         addSuccess: 'Activity added!',
         addError: 'Error adding activity',
         voteError: 'Error voting',
+        confirmVotes: 'Confirm votes',
+        unsavedChanges: '{count} unsaved change(s)',
+        reset: 'Reset',
+        saving: 'Saving...',
+        saved: 'Votes saved!',
+        pendingChange: 'Pending',
       },
       location: {
         title: 'Location',
