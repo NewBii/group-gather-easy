@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Check, X, HelpCircle, Plus, MapPin, Car, Train, Bike, Footprints } from 'lucide-react';
+import { Check, X, HelpCircle, Plus, MapPin, Car, Train, Bike, Footprints, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,6 +12,8 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { LocationInput } from './LocationInput';
+import { FairSpotMap } from './FairSpotMap';
 import type { Event, LocationSuggestion, LocationVote, Participant } from '@/hooks/useEventData';
 
 const locationSchema = z.object({
@@ -208,11 +210,82 @@ export const LocationSection = ({
   const bestLocation = sortedLocations[0];
   const bestYesCount = bestLocation ? getVoteCounts(bestLocation.id).yes : 0;
 
+  // State for fair spot mode
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [fairSpotAddress, setFairSpotAddress] = useState<string | null>(null);
+
+  // Calculate fair spot and reverse geocode
+  const participantsWithLocation = participants.filter(p => p.location_lat != null && p.location_lng != null);
+  
+  // Fetch fair spot address when we have 2+ participants with location
+  const fetchFairSpotAddress = useCallback(async () => {
+    if (participantsWithLocation.length < 2) {
+      setFairSpotAddress(null);
+      return;
+    }
+
+    // Calculate weighted centroid
+    const TRANSPORT_WEIGHTS: Record<string, number> = {
+      car: 1.0,
+      public_transport: 1.2,
+      bike: 1.5,
+      walk: 2.0,
+    };
+
+    let totalWeightedLat = 0;
+    let totalWeightedLng = 0;
+    let totalWeight = 0;
+
+    participantsWithLocation.forEach(p => {
+      const weight = TRANSPORT_WEIGHTS[p.transport_mode || 'car'] || 1.0;
+      totalWeightedLat += (p.location_lat || 0) * weight;
+      totalWeightedLng += (p.location_lng || 0) * weight;
+      totalWeight += weight;
+    });
+
+    const fairLat = totalWeightedLat / totalWeight;
+    const fairLng = totalWeightedLng / totalWeight;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('reverse-geocode', {
+        body: { lat: fairLat, lng: fairLng },
+      });
+
+      if (!error && data.address) {
+        setFairSpotAddress(data.address);
+      }
+    } catch (err) {
+      console.error('Error fetching fair spot address:', err);
+    }
+  }, [participantsWithLocation]);
+
+  useEffect(() => {
+    if (event.location_type === 'fair_spot') {
+      fetchFairSpotAddress();
+    }
+  }, [event.location_type, fetchFairSpotAddress]);
+
+  // Handle location confirmation from LocationInput
+  const handleLocationConfirm = async (lat: number, lng: number, address: string, transportMode: string) => {
+    try {
+      await onUpdateLocation(lat, lng, transportMode);
+      setIsEditingLocation(false);
+      toast({
+        title: t.eventPage.location.locationSaved,
+      });
+    } catch (err) {
+      console.error('Error saving location:', err);
+      toast({
+        title: t.eventPage.location.locationError,
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Render fair_spot mode
   if (event.location_type === 'fair_spot') {
     const currentParticipant = participants.find(p => p.id === participantId);
     const hasLocation = currentParticipant?.location_lat && currentParticipant?.location_lng;
-    const participantsWithLocation = participants.filter(p => p.location_lat && p.location_lng);
 
     return (
       <Card>
@@ -226,88 +299,52 @@ export const LocationSection = ({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {participantId && !hasLocation && (
+          {/* Location Input for participant without location */}
+          {participantId && !hasLocation && !isEditingLocation && (
             <div className="p-4 rounded-lg border bg-muted/50">
-              <Form {...locationForm}>
-                <form onSubmit={locationForm.handleSubmit(handleParticipantLocation)} className="space-y-3">
-                  <FormField
-                    control={locationForm.control}
-                    name="location"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t.eventPage.location.yourLocation}</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder={t.eventPage.location.locationPlaceholder} 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={locationForm.control}
-                    name="transportMode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t.eventPage.location.transportMode}</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="car">
-                              <div className="flex items-center gap-2">
-                                <Car className="h-4 w-4" />
-                                {t.eventPage.location.transportModes.car}
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="public_transport">
-                              <div className="flex items-center gap-2">
-                                <Train className="h-4 w-4" />
-                                {t.eventPage.location.transportModes.publicTransport}
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="bike">
-                              <div className="flex items-center gap-2">
-                                <Bike className="h-4 w-4" />
-                                {t.eventPage.location.transportModes.bike}
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="walk">
-                              <div className="flex items-center gap-2">
-                                <Footprints className="h-4 w-4" />
-                                {t.eventPage.location.transportModes.walk}
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" size="sm" disabled={isSubmitting}>
-                    {t.eventPage.location.saveLocation}
-                  </Button>
-                </form>
-              </Form>
+              <LocationInput
+                onConfirm={handleLocationConfirm}
+                initialTransportMode={currentParticipant?.transport_mode || 'car'}
+              />
             </div>
           )}
 
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              {t.eventPage.location.participantsWithLocation.replace('{count}', participantsWithLocation.length.toString())}
-            </p>
-            {participantsWithLocation.map(p => (
-              <div key={p.id} className="flex items-center gap-2 text-sm">
-                {getTransportIcon(p.transport_mode || 'car')}
-                <span>{p.name}</span>
+          {/* Edit location button for participant with location */}
+          {participantId && hasLocation && !isEditingLocation && (
+            <div className="p-4 rounded-lg border bg-muted/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">{t.eventPage.location.locationSaved}</span>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => setIsEditingLocation(true)}
+                >
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  {t.eventPage.location.updateLocation}
+                </Button>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {/* Editing location */}
+          {participantId && isEditingLocation && (
+            <div className="p-4 rounded-lg border bg-muted/50">
+              <LocationInput
+                onConfirm={handleLocationConfirm}
+                onCancel={() => setIsEditingLocation(false)}
+                initialTransportMode={currentParticipant?.transport_mode || 'car'}
+              />
+            </div>
+          )}
+
+          {/* Fair Spot Map */}
+          <FairSpotMap 
+            participants={participants}
+            fairSpotAddress={fairSpotAddress}
+          />
         </CardContent>
       </Card>
     );
