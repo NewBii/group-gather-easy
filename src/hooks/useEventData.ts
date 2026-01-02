@@ -89,11 +89,14 @@ export const useEventData = (slugOrId: string | undefined) => {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch event and all related data
-  const fetchEventData = async () => {
+  const fetchEventData = async (isRealtime = false) => {
     if (!slugOrId) return;
 
     try {
-      setLoading(true);
+      // Only show loading spinner on initial load, not realtime updates
+      if (!isRealtime) {
+        setLoading(true);
+      }
       setError(null);
 
       // Try to find by slug first, then by id
@@ -163,7 +166,9 @@ export const useEventData = (slugOrId: string | undefined) => {
       console.error('Error fetching event data:', err);
       setError('Failed to load event');
     } finally {
-      setLoading(false);
+      if (!isRealtime) {
+        setLoading(false);
+      }
     }
   };
 
@@ -174,22 +179,22 @@ export const useEventData = (slugOrId: string | undefined) => {
     const channel = supabase
       .channel(`event-${event.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `event_id=eq.${event.id}` }, 
-        () => fetchEventData()
+        () => fetchEventData(true)
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'date_votes' }, 
-        () => fetchEventData()
+        () => fetchEventData(true)
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activities', filter: `event_id=eq.${event.id}` }, 
-        () => fetchEventData()
+        () => fetchEventData(true)
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_votes' }, 
-        () => fetchEventData()
+        () => fetchEventData(true)
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'location_suggestions', filter: `event_id=eq.${event.id}` }, 
-        () => fetchEventData()
+        () => fetchEventData(true)
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'location_votes' }, 
-        () => fetchEventData()
+        () => fetchEventData(true)
       )
       .subscribe();
 

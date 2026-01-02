@@ -126,6 +126,12 @@ interface Translations {
       noDates: string;
       joinFirst: string;
       voteError: string;
+      confirmAvailability: string;
+      unsavedChanges: string;
+      reset: string;
+      saving: string;
+      saved: string;
+      pendingChange: string;
     };
     activities: {
       title: string;
@@ -356,6 +362,12 @@ export const translations: Record<Language, Translations> = {
         noDates: 'Aucune date proposée',
         joinFirst: 'Rejoignez l\'événement pour voter',
         voteError: 'Erreur lors du vote',
+        confirmAvailability: 'Confirmer mes disponibilités',
+        unsavedChanges: '{count} modification(s) non enregistrée(s)',
+        reset: 'Annuler',
+        saving: 'Enregistrement...',
+        saved: 'Disponibilités enregistrées !',
+        pendingChange: 'En attente',
       },
       activities: {
         title: 'Activités',
@@ -584,6 +596,12 @@ export const translations: Record<Language, Translations> = {
         noDates: 'No dates proposed',
         joinFirst: 'Join the event to vote',
         voteError: 'Error voting',
+        confirmAvailability: 'Confirm availability',
+        unsavedChanges: '{count} unsaved change(s)',
+        reset: 'Reset',
+        saving: 'Saving...',
+        saved: 'Availability saved!',
+        pendingChange: 'Pending',
       },
       activities: {
         title: 'Activities',

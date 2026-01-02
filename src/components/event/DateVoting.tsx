@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Check, X, HelpCircle } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Check, X, HelpCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -23,7 +23,8 @@ type VoteType = 'yes' | 'no' | 'maybe';
 export const DateVoting = ({ dateOptions, dateVotes, participantId, participantsCount }: DateVotingProps) => {
   const { t, language } = useLanguage();
   const { toast } = useToast();
-  const [voting, setVoting] = useState<string | null>(null);
+  const [pendingVotes, setPendingVotes] = useState<Map<string, VoteType>>(new Map());
+  const [isSaving, setIsSaving] = useState(false);
   const dateLocale = language === 'fr' ? fr : enUS;
 
   const getVoteCounts = (dateOptionId: string) => {
@@ -35,13 +36,23 @@ export const DateVoting = ({ dateOptions, dateVotes, participantId, participants
     };
   };
 
-  const getCurrentVote = (dateOptionId: string): VoteType | null => {
+  const getSavedVote = (dateOptionId: string): VoteType | null => {
     if (!participantId) return null;
     const vote = dateVotes.find(v => v.date_option_id === dateOptionId && v.participant_id === participantId);
     return vote?.vote || null;
   };
 
-  const handleVote = async (dateOptionId: string, vote: VoteType) => {
+  const getDisplayVote = (dateOptionId: string): VoteType | null => {
+    return pendingVotes.get(dateOptionId) ?? getSavedVote(dateOptionId);
+  };
+
+  const isPending = (dateOptionId: string): boolean => {
+    const pending = pendingVotes.get(dateOptionId);
+    const saved = getSavedVote(dateOptionId);
+    return pending !== undefined && pending !== saved;
+  };
+
+  const handleVoteChange = (dateOptionId: string, vote: VoteType) => {
     if (!participantId) {
       toast({
         title: t.eventPage.dateVoting.joinFirst,
@@ -50,42 +61,69 @@ export const DateVoting = ({ dateOptions, dateVotes, participantId, participants
       return;
     }
 
-    setVoting(dateOptionId);
-
-    try {
-      const existingVote = dateVotes.find(
-        v => v.date_option_id === dateOptionId && v.participant_id === participantId
-      );
-
-      if (existingVote) {
-        // Update existing vote
-        const { error } = await supabase
-          .from('date_votes')
-          .update({ vote })
-          .eq('id', existingVote.id);
-
-        if (error) throw error;
+    setPendingVotes(prev => {
+      const next = new Map(prev);
+      const saved = getSavedVote(dateOptionId);
+      if (vote === saved) {
+        next.delete(dateOptionId);
       } else {
-        // Insert new vote
-        const { error } = await supabase
-          .from('date_votes')
-          .insert({
-            date_option_id: dateOptionId,
-            participant_id: participantId,
-            vote,
-          });
-
-        if (error) throw error;
+        next.set(dateOptionId, vote);
       }
+      return next;
+    });
+  };
+
+  const pendingCount = useMemo(() => {
+    return Array.from(pendingVotes.entries()).filter(([id, vote]) => {
+      const saved = getSavedVote(id);
+      return vote !== saved;
+    }).length;
+  }, [pendingVotes, dateVotes, participantId]);
+
+  const confirmAvailability = async () => {
+    if (!participantId || pendingCount === 0) return;
+
+    setIsSaving(true);
+    try {
+      const promises = Array.from(pendingVotes.entries()).map(async ([dateOptionId, vote]) => {
+        const existing = dateVotes.find(
+          v => v.date_option_id === dateOptionId && v.participant_id === participantId
+        );
+
+        if (existing) {
+          const { error } = await supabase
+            .from('date_votes')
+            .update({ vote })
+            .eq('id', existing.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('date_votes')
+            .insert({
+              date_option_id: dateOptionId,
+              participant_id: participantId,
+              vote,
+            });
+          if (error) throw error;
+        }
+      });
+
+      await Promise.all(promises);
+      setPendingVotes(new Map());
+      toast({ title: t.eventPage.dateVoting.saved });
     } catch (err) {
-      console.error('Error voting:', err);
+      console.error('Error saving votes:', err);
       toast({
         title: t.eventPage.dateVoting.voteError,
         variant: 'destructive',
       });
     } finally {
-      setVoting(null);
+      setIsSaving(false);
     }
+  };
+
+  const resetChanges = () => {
+    setPendingVotes(new Map());
   };
 
   const formatDateOption = (option: DateOption) => {
@@ -125,82 +163,116 @@ export const DateVoting = ({ dateOptions, dateVotes, participantId, participants
             {t.eventPage.dateVoting.noDates}
           </p>
         ) : (
-          dateOptions.map(option => {
-            const counts = getVoteCounts(option.id);
-            const currentVote = getCurrentVote(option.id);
-            const totalVotes = counts.yes + counts.no + counts.maybe;
-            const yesPercentage = totalVotes > 0 ? (counts.yes / participantsCount) * 100 : 0;
-            const isBest = bestYesCount > 0 && counts.yes === bestYesCount;
+          <>
+            {dateOptions.map(option => {
+              const counts = getVoteCounts(option.id);
+              const currentVote = getDisplayVote(option.id);
+              const hasPending = isPending(option.id);
+              const totalVotes = counts.yes + counts.no + counts.maybe;
+              const yesPercentage = totalVotes > 0 ? (counts.yes / participantsCount) * 100 : 0;
+              const isBest = bestYesCount > 0 && counts.yes === bestYesCount;
 
-            return (
-              <div 
-                key={option.id} 
-                className={cn(
-                  "p-4 rounded-lg border transition-colors",
-                  isBest && "border-primary bg-primary/5"
-                )}
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex-1">
-                    <p className={cn("font-medium", isBest && "text-primary")}>
-                      {formatDateOption(option)}
-                    </p>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Check className="h-3 w-3 text-green-600" />
-                        {counts.yes}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <HelpCircle className="h-3 w-3 text-yellow-600" />
-                        {counts.maybe}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <X className="h-3 w-3 text-red-600" />
-                        {counts.no}
-                      </span>
+              return (
+                <div 
+                  key={option.id} 
+                  className={cn(
+                    "p-4 rounded-lg border transition-colors",
+                    isBest && "border-primary bg-primary/5",
+                    hasPending && "border-dashed border-amber-500 bg-amber-50/50 dark:bg-amber-950/20"
+                  )}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className={cn("font-medium", isBest && "text-primary")}>
+                          {formatDateOption(option)}
+                        </p>
+                        {hasPending && (
+                          <span className="text-xs text-amber-600 bg-amber-100 dark:bg-amber-900/50 px-1.5 py-0.5 rounded">
+                            {t.eventPage.dateVoting.pendingChange}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Check className="h-3 w-3 text-green-600" />
+                          {counts.yes}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <HelpCircle className="h-3 w-3 text-yellow-600" />
+                          {counts.maybe}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <X className="h-3 w-3 text-red-600" />
+                          {counts.no}
+                        </span>
+                      </div>
+                      <Progress value={yesPercentage} className="mt-2 h-2" />
                     </div>
-                    <Progress value={yesPercentage} className="mt-2 h-2" />
-                  </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant={currentVote === 'yes' ? 'default' : 'outline'}
-                      className={cn(
-                        currentVote === 'yes' && 'bg-green-600 hover:bg-green-700'
-                      )}
-                      onClick={() => handleVote(option.id, 'yes')}
-                      disabled={voting === option.id || !participantId}
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={currentVote === 'maybe' ? 'default' : 'outline'}
-                      className={cn(
-                        currentVote === 'maybe' && 'bg-yellow-600 hover:bg-yellow-700'
-                      )}
-                      onClick={() => handleVote(option.id, 'maybe')}
-                      disabled={voting === option.id || !participantId}
-                    >
-                      <HelpCircle className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={currentVote === 'no' ? 'default' : 'outline'}
-                      className={cn(
-                        currentVote === 'no' && 'bg-red-600 hover:bg-red-700'
-                      )}
-                      onClick={() => handleVote(option.id, 'no')}
-                      disabled={voting === option.id || !participantId}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={currentVote === 'yes' ? 'default' : 'outline'}
+                        className={cn(
+                          currentVote === 'yes' && 'bg-green-600 hover:bg-green-700'
+                        )}
+                        onClick={() => handleVoteChange(option.id, 'yes')}
+                        disabled={!participantId || isSaving}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={currentVote === 'maybe' ? 'default' : 'outline'}
+                        className={cn(
+                          currentVote === 'maybe' && 'bg-yellow-600 hover:bg-yellow-700'
+                        )}
+                        onClick={() => handleVoteChange(option.id, 'maybe')}
+                        disabled={!participantId || isSaving}
+                      >
+                        <HelpCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={currentVote === 'no' ? 'default' : 'outline'}
+                        className={cn(
+                          currentVote === 'no' && 'bg-red-600 hover:bg-red-700'
+                        )}
+                        onClick={() => handleVoteChange(option.id, 'no')}
+                        disabled={!participantId || isSaving}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+
+            {pendingCount > 0 && (
+              <div className="flex items-center justify-between pt-4 border-t">
+                <span className="text-sm text-muted-foreground">
+                  {t.eventPage.dateVoting.unsavedChanges.replace('{count}', String(pendingCount))}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={resetChanges} disabled={isSaving}>
+                    {t.eventPage.dateVoting.reset}
+                  </Button>
+                  <Button size="sm" onClick={confirmAvailability} disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {t.eventPage.dateVoting.saving}
+                      </>
+                    ) : (
+                      t.eventPage.dateVoting.confirmAvailability
+                    )}
+                  </Button>
+                </div>
               </div>
-            );
-          })
+            )}
+          </>
         )}
       </CardContent>
     </Card>
