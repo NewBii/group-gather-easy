@@ -11,6 +11,7 @@ import Guides from "./pages/Guides";
 import Event from "./pages/Event";
 import Auth from "./pages/Auth";
 import MyEvents from "./pages/MyEvents";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/event/:id" element={<Event />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/my-events" element={<MyEvents />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>
