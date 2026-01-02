@@ -94,6 +94,27 @@ interface Translations {
   myEvents: { title: string; createNew: string; noEvents: string; createFirst: string; noDescription: string; };
   common: { loading: string; error: string; back: string; cancel: string; };
   notFound: { title: string; description: string; backHome: string; };
+  footer: {
+    allRightsReserved: string;
+    privacyPolicy: string;
+  };
+  privacy: {
+    title: string;
+    lastUpdated: string;
+    intro: string;
+    dataController: { title: string; content: string; };
+    dataCollected: { title: string; intro: string; items: string[]; };
+    legalBasis: { title: string; intro: string; items: string[]; };
+    purposes: { title: string; items: string[]; };
+    retention: { title: string; content: string; };
+    sharing: { title: string; intro: string; items: string[]; };
+    rights: { title: string; intro: string; items: string[]; howToExercise: string; };
+    cookies: { title: string; content: string; };
+    security: { title: string; content: string; };
+    children: { title: string; content: string; };
+    updates: { title: string; content: string; };
+    contact: { title: string; content: string; };
+  };
   eventPage: {
     loading: string;
     notFound: string;
@@ -336,6 +357,94 @@ export const translations: Record<Language, Translations> = {
       description: 'La page que vous recherchez n\'existe pas.',
       backHome: 'Retour à l\'accueil',
     },
+    footer: {
+      allRightsReserved: 'Tous droits réservés.',
+      privacyPolicy: 'Politique de confidentialité',
+    },
+    privacy: {
+      title: 'Politique de confidentialité',
+      lastUpdated: 'Dernière mise à jour',
+      intro: 'Chez Ensemble, nous nous engageons à protéger votre vie privée et vos données personnelles conformément au Règlement Général sur la Protection des Données (RGPD) et aux autres lois européennes applicables.',
+      dataController: {
+        title: 'Responsable du traitement',
+        content: 'Ensemble est responsable du traitement de vos données personnelles. Pour toute question concernant la protection de vos données, vous pouvez nous contacter via les coordonnées indiquées dans la section Contact.',
+      },
+      dataCollected: {
+        title: 'Données collectées',
+        intro: 'Nous collectons uniquement les données nécessaires au fonctionnement du service :',
+        items: [
+          'Nom ou pseudonyme (pour vous identifier dans les événements)',
+          'Adresse email (optionnelle, pour les notifications)',
+          'Localisation (optionnelle, uniquement pour la fonctionnalité "point de rendez-vous équitable")',
+          'Données de participation aux événements (votes, suggestions)',
+        ],
+      },
+      legalBasis: {
+        title: 'Base légale du traitement',
+        intro: 'Nous traitons vos données sur les bases suivantes (Article 6 du RGPD) :',
+        items: [
+          'Consentement : vous acceptez de participer aux événements',
+          'Exécution du contrat : pour fournir le service d\'organisation d\'événements',
+          'Intérêt légitime : pour améliorer nos services',
+        ],
+      },
+      purposes: {
+        title: 'Finalités du traitement',
+        items: [
+          'Permettre la création et la gestion d\'événements collaboratifs',
+          'Faciliter le vote sur les dates, lieux et activités',
+          'Calculer le point de rendez-vous équitable (si vous partagez votre localisation)',
+          'Envoyer des notifications par email (si vous avez fourni votre email)',
+        ],
+      },
+      retention: {
+        title: 'Conservation des données',
+        content: 'Vos données sont conservées pendant la durée nécessaire aux finalités pour lesquelles elles ont été collectées. Les données des événements sont supprimées 12 mois après la date de l\'événement. Vous pouvez demander la suppression de vos données à tout moment.',
+      },
+      sharing: {
+        title: 'Partage des données',
+        intro: 'Vos données peuvent être partagées avec :',
+        items: [
+          'Les autres participants de vos événements (nom uniquement)',
+          'Nos fournisseurs techniques pour l\'hébergement et le stockage sécurisé',
+          'Les services de cartographie pour la fonctionnalité de point équitable',
+        ],
+      },
+      rights: {
+        title: 'Vos droits',
+        intro: 'Conformément au RGPD (Articles 15-22), vous disposez des droits suivants :',
+        items: [
+          'Droit d\'accès : obtenir une copie de vos données personnelles',
+          'Droit de rectification : corriger vos données inexactes',
+          'Droit à l\'effacement ("droit à l\'oubli") : supprimer vos données',
+          'Droit à la limitation du traitement',
+          'Droit à la portabilité : recevoir vos données dans un format structuré',
+          'Droit d\'opposition : vous opposer au traitement de vos données',
+          'Droit de retirer votre consentement à tout moment',
+        ],
+        howToExercise: 'Pour exercer ces droits, contactez-nous via les coordonnées indiquées ci-dessous. Vous avez également le droit de déposer une plainte auprès de la CNIL ou de toute autre autorité de protection des données compétente.',
+      },
+      cookies: {
+        title: 'Cookies',
+        content: 'Nous utilisons uniquement des cookies essentiels au fonctionnement du site (authentification, préférences de langue). Nous n\'utilisons pas de cookies de suivi ou publicitaires.',
+      },
+      security: {
+        title: 'Sécurité',
+        content: 'Nous mettons en œuvre des mesures techniques et organisationnelles appropriées pour protéger vos données : chiffrement en transit et au repos, contrôles d\'accès stricts, audits de sécurité réguliers.',
+      },
+      children: {
+        title: 'Protection des mineurs',
+        content: 'Notre service n\'est pas destiné aux enfants de moins de 16 ans. Nous ne collectons pas sciemment de données personnelles de mineurs sans le consentement parental.',
+      },
+      updates: {
+        title: 'Modifications de cette politique',
+        content: 'Nous pouvons mettre à jour cette politique de confidentialité. Toute modification significative sera communiquée via le site ou par email si vous êtes inscrit.',
+      },
+      contact: {
+        title: 'Contact',
+        content: 'Pour toute question concernant cette politique ou pour exercer vos droits, contactez-nous à : privacy@ensemble.app',
+      },
+    },
     eventPage: {
       loading: 'Chargement de l\'événement...',
       notFound: 'Événement non trouvé',
@@ -575,6 +684,94 @@ export const translations: Record<Language, Translations> = {
       title: 'Page not found',
       description: 'The page you are looking for does not exist.',
       backHome: 'Back to home',
+    },
+    footer: {
+      allRightsReserved: 'All rights reserved.',
+      privacyPolicy: 'Privacy Policy',
+    },
+    privacy: {
+      title: 'Privacy Policy',
+      lastUpdated: 'Last updated',
+      intro: 'At Ensemble, we are committed to protecting your privacy and personal data in accordance with the General Data Protection Regulation (GDPR) and other applicable European laws.',
+      dataController: {
+        title: 'Data Controller',
+        content: 'Ensemble is the data controller for your personal data. For any questions regarding data protection, you can contact us using the details provided in the Contact section.',
+      },
+      dataCollected: {
+        title: 'Data We Collect',
+        intro: 'We only collect data necessary for the service to function:',
+        items: [
+          'Name or nickname (to identify you in events)',
+          'Email address (optional, for notifications)',
+          'Location (optional, only for the "fair meeting point" feature)',
+          'Event participation data (votes, suggestions)',
+        ],
+      },
+      legalBasis: {
+        title: 'Legal Basis for Processing',
+        intro: 'We process your data on the following bases (Article 6 GDPR):',
+        items: [
+          'Consent: you agree to participate in events',
+          'Contract performance: to provide the event organization service',
+          'Legitimate interest: to improve our services',
+        ],
+      },
+      purposes: {
+        title: 'Purposes of Processing',
+        items: [
+          'Enable creation and management of collaborative events',
+          'Facilitate voting on dates, locations, and activities',
+          'Calculate the fair meeting point (if you share your location)',
+          'Send email notifications (if you provided your email)',
+        ],
+      },
+      retention: {
+        title: 'Data Retention',
+        content: 'Your data is retained for as long as necessary for the purposes for which it was collected. Event data is deleted 12 months after the event date. You can request deletion of your data at any time.',
+      },
+      sharing: {
+        title: 'Data Sharing',
+        intro: 'Your data may be shared with:',
+        items: [
+          'Other participants in your events (name only)',
+          'Our technical providers for secure hosting and storage',
+          'Mapping services for the fair meeting point feature',
+        ],
+      },
+      rights: {
+        title: 'Your Rights',
+        intro: 'Under GDPR (Articles 15-22), you have the following rights:',
+        items: [
+          'Right of access: obtain a copy of your personal data',
+          'Right to rectification: correct inaccurate data',
+          'Right to erasure ("right to be forgotten"): delete your data',
+          'Right to restriction of processing',
+          'Right to data portability: receive your data in a structured format',
+          'Right to object: object to the processing of your data',
+          'Right to withdraw consent at any time',
+        ],
+        howToExercise: 'To exercise these rights, contact us using the details below. You also have the right to lodge a complaint with your national data protection authority.',
+      },
+      cookies: {
+        title: 'Cookies',
+        content: 'We only use essential cookies for the site to function (authentication, language preferences). We do not use tracking or advertising cookies.',
+      },
+      security: {
+        title: 'Security',
+        content: 'We implement appropriate technical and organizational measures to protect your data: encryption in transit and at rest, strict access controls, regular security audits.',
+      },
+      children: {
+        title: 'Children\'s Privacy',
+        content: 'Our service is not intended for children under 16. We do not knowingly collect personal data from minors without parental consent.',
+      },
+      updates: {
+        title: 'Policy Updates',
+        content: 'We may update this privacy policy. Any significant changes will be communicated via the site or by email if you are registered.',
+      },
+      contact: {
+        title: 'Contact Us',
+        content: 'For any questions about this policy or to exercise your rights, contact us at: privacy@ensemble.app',
+      },
     },
     eventPage: {
       loading: 'Loading event...',
