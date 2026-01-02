@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_id: string
+          id: string
+          name: string
+          suggested_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_id: string
+          id?: string
+          name: string
+          suggested_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_id?: string
+          id?: string
+          name?: string
+          suggested_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_votes: {
+        Row: {
+          activity_id: string
+          created_at: string
+          id: string
+          participant_id: string
+          vote: Database["public"]["Enums"]["vote_type"]
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          id?: string
+          participant_id: string
+          vote: Database["public"]["Enums"]["vote_type"]
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          id?: string
+          participant_id?: string
+          vote?: Database["public"]["Enums"]["vote_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_votes_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       date_options: {
         Row: {
           created_at: string
@@ -42,6 +123,48 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      date_votes: {
+        Row: {
+          created_at: string
+          date_option_id: string
+          id: string
+          participant_id: string
+          updated_at: string
+          vote: Database["public"]["Enums"]["vote_type"]
+        }
+        Insert: {
+          created_at?: string
+          date_option_id: string
+          id?: string
+          participant_id: string
+          updated_at?: string
+          vote: Database["public"]["Enums"]["vote_type"]
+        }
+        Update: {
+          created_at?: string
+          date_option_id?: string
+          id?: string
+          participant_id?: string
+          updated_at?: string
+          vote?: Database["public"]["Enums"]["vote_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "date_votes_date_option_id_fkey"
+            columns: ["date_option_id"]
+            isOneToOne: false
+            referencedRelation: "date_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "date_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
             referencedColumns: ["id"]
           },
         ]
@@ -99,6 +222,87 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      location_suggestions: {
+        Row: {
+          address: string | null
+          created_at: string
+          event_id: string
+          id: string
+          name: string
+          suggested_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          name: string
+          suggested_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          name?: string
+          suggested_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_suggestions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_suggestions_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      location_votes: {
+        Row: {
+          created_at: string
+          id: string
+          location_suggestion_id: string
+          participant_id: string
+          vote: Database["public"]["Enums"]["vote_type"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_suggestion_id: string
+          participant_id: string
+          vote: Database["public"]["Enums"]["vote_type"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_suggestion_id?: string
+          participant_id?: string
+          vote?: Database["public"]["Enums"]["vote_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_votes_location_suggestion_id_fkey"
+            columns: ["location_suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "location_suggestions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       participants: {
         Row: {
@@ -192,6 +396,7 @@ export type Database = {
       event_type: "day_event" | "trip"
       location_type: "set_venues" | "suggestions" | "fair_spot"
       transport_mode: "car" | "public_transit" | "bike" | "walk"
+      vote_type: "yes" | "no" | "maybe"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -323,6 +528,7 @@ export const Constants = {
       event_type: ["day_event", "trip"],
       location_type: ["set_venues", "suggestions", "fair_spot"],
       transport_mode: ["car", "public_transit", "bike", "walk"],
+      vote_type: ["yes", "no", "maybe"],
     },
   },
 } as const
