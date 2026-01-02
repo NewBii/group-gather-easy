@@ -168,6 +168,13 @@ interface Translations {
       everyoneLocated: string;
       waitingForLocations: string;
       participantsOnMap: string;
+      searchByAddress: string;
+      selectOnMap: string;
+      useMyLocation: string;
+      clickToSelect: string;
+      mapLoadError: string;
+      change: string;
+      locationPending: string;
     };
     participants: {
       title: string;
@@ -391,6 +398,13 @@ export const translations: Record<Language, Translations> = {
         everyoneLocated: 'Tous les participants ont partagé leur localisation !',
         waitingForLocations: '{count} participant(s) n\'ont pas encore partagé leur localisation',
         participantsOnMap: 'Participants sur la carte',
+        searchByAddress: 'Rechercher',
+        selectOnMap: 'Carte',
+        useMyLocation: 'Ma position',
+        clickToSelect: 'Cliquez sur la carte pour sélectionner votre position',
+        mapLoadError: 'Impossible de charger la carte',
+        change: 'Modifier',
+        locationPending: 'En attente',
       },
       participants: {
         title: 'Participants',
@@ -612,6 +626,13 @@ export const translations: Record<Language, Translations> = {
         everyoneLocated: 'All participants have shared their location!',
         waitingForLocations: '{count} participant(s) haven\'t shared their location yet',
         participantsOnMap: 'Participants on map',
+        searchByAddress: 'Search',
+        selectOnMap: 'Map',
+        useMyLocation: 'My location',
+        clickToSelect: 'Click on the map to select your location',
+        mapLoadError: 'Unable to load map',
+        change: 'Change',
+        locationPending: 'Pending',
       },
       participants: {
         title: 'Participants',
