@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Participant } from '@/hooks/useEventData';
+import { escapeHtml } from '@/lib/htmlSanitizer';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -115,12 +116,12 @@ export const FairSpotMap = ({ participants, fairSpotAddress }: FairSpotMapProps)
         const el = document.createElement('div');
         el.className = 'flex items-center justify-center w-8 h-8 rounded-full border-2 border-white shadow-lg cursor-pointer';
         el.style.backgroundColor = color;
-        el.innerHTML = `<span style="color: white; font-size: 12px; font-weight: bold;">${p.name.charAt(0).toUpperCase()}</span>`;
+        el.innerHTML = `<span style="color: white; font-size: 12px; font-weight: bold;">${escapeHtml(p.name.charAt(0).toUpperCase())}</span>`;
 
         const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
           <div style="padding: 4px;">
-            <div style="font-weight: 600; font-size: 14px;">${p.name}</div>
-            <div style="font-size: 12px; color: #666;">${getTransportLabel(p.transport_mode)}</div>
+            <div style="font-weight: 600; font-size: 14px;">${escapeHtml(p.name)}</div>
+            <div style="font-size: 12px; color: #666;">${escapeHtml(getTransportLabel(p.transport_mode))}</div>
           </div>
         `);
 
@@ -141,8 +142,8 @@ export const FairSpotMap = ({ participants, fairSpotAddress }: FairSpotMapProps)
 
         const fairSpotPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
           <div style="padding: 4px;">
-            <div style="font-weight: 600; font-size: 14px;">${t.eventPage?.location?.fairMeetingPoint || 'Fair Meeting Point'}</div>
-            ${fairSpotAddress ? `<div style="font-size: 12px; color: #666;">${fairSpotAddress}</div>` : ''}
+            <div style="font-weight: 600; font-size: 14px;">${escapeHtml(t.eventPage?.location?.fairMeetingPoint || 'Fair Meeting Point')}</div>
+            ${fairSpotAddress ? `<div style="font-size: 12px; color: #666;">${escapeHtml(fairSpotAddress)}</div>` : ''}
           </div>
         `);
 
