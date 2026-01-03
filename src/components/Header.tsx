@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, LogOut } from 'lucide-react';
+import { Menu, X, LogOut, Settings } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { cn } from '@/lib/utils';
@@ -76,6 +76,11 @@ export function Header() {
           {user ? (
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground">{displayName}</span>
+              <Link to="/account">
+                <Button variant="ghost" size="icon" title={t.account.title}>
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </Link>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 {t.auth.logout}
@@ -126,10 +131,17 @@ export function Header() {
               {user ? (
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">{displayName}</span>
-                  <Button variant="outline" size="sm" onClick={handleLogout}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    {t.auth.logout}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Link to="/account" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="ghost" size="icon" title={t.account.title}>
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    <Button variant="outline" size="sm" onClick={handleLogout}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      {t.auth.logout}
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>

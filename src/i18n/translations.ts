@@ -92,6 +92,24 @@ interface Translations {
     addToCalendar: string;
   };
   myEvents: { title: string; createNew: string; noEvents: string; createFirst: string; noDescription: string; };
+  account: {
+    title: string;
+    subtitle: string;
+    infoTitle: string;
+    infoDescription: string;
+    createdAt: string;
+    dangerZone: string;
+    dangerDescription: string;
+    deleteButton: string;
+    deleteConfirmTitle: string;
+    deleteConfirmDescription: string;
+    deleteItem1: string;
+    deleteItem2: string;
+    deleteItem3: string;
+    deleteConfirmInstruction: string;
+    deleteSuccess: string;
+    deleteError: string;
+  };
   common: { loading: string; error: string; back: string; cancel: string; };
   notFound: { title: string; description: string; backHome: string; };
   cookies: {
@@ -351,6 +369,24 @@ export const translations: Record<Language, Translations> = {
       noEvents: 'Vous n\'avez pas encore créé d\'événement.',
       createFirst: 'Créer mon premier événement',
       noDescription: 'Aucune description',
+    },
+    account: {
+      title: 'Mon compte',
+      subtitle: 'Gérez vos informations personnelles et vos données.',
+      infoTitle: 'Informations du compte',
+      infoDescription: 'Vos informations de connexion.',
+      createdAt: 'Compte créé le',
+      dangerZone: 'Zone de danger',
+      dangerDescription: 'Actions irréversibles concernant votre compte et vos données.',
+      deleteButton: 'Supprimer mes données',
+      deleteConfirmTitle: 'Supprimer toutes mes données ?',
+      deleteConfirmDescription: 'Cette action est irréversible. Toutes vos données seront définitivement supprimées :',
+      deleteItem1: 'Votre profil utilisateur',
+      deleteItem2: 'Tous les événements que vous avez créés',
+      deleteItem3: 'Votre participation à tous les événements',
+      deleteConfirmInstruction: 'Tapez DELETE pour confirmer :',
+      deleteSuccess: 'Vos données ont été supprimées avec succès.',
+      deleteError: 'Une erreur est survenue lors de la suppression.',
     },
     common: {
       loading: 'Chargement...',
@@ -685,6 +721,24 @@ export const translations: Record<Language, Translations> = {
       noEvents: 'You haven\'t created any events yet.',
       createFirst: 'Create my first event',
       noDescription: 'No description',
+    },
+    account: {
+      title: 'My Account',
+      subtitle: 'Manage your personal information and data.',
+      infoTitle: 'Account Information',
+      infoDescription: 'Your login information.',
+      createdAt: 'Account created on',
+      dangerZone: 'Danger Zone',
+      dangerDescription: 'Irreversible actions concerning your account and data.',
+      deleteButton: 'Delete My Data',
+      deleteConfirmTitle: 'Delete all my data?',
+      deleteConfirmDescription: 'This action is irreversible. All your data will be permanently deleted:',
+      deleteItem1: 'Your user profile',
+      deleteItem2: 'All events you have created',
+      deleteItem3: 'Your participation in all events',
+      deleteConfirmInstruction: 'Type DELETE to confirm:',
+      deleteSuccess: 'Your data has been successfully deleted.',
+      deleteError: 'An error occurred during deletion.',
     },
     common: {
       loading: 'Loading...',
