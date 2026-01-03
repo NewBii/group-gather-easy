@@ -98,6 +98,20 @@ interface Translations {
     infoTitle: string;
     infoDescription: string;
     createdAt: string;
+    notifications: {
+      title: string;
+      description: string;
+      eventUpdates: string;
+      eventUpdatesDesc: string;
+      newParticipants: string;
+      newParticipantsDesc: string;
+      votingReminders: string;
+      votingRemindersDesc: string;
+      eventFinalized: string;
+      eventFinalizedDesc: string;
+      saveSuccess: string;
+      saveError: string;
+    };
     dangerZone: string;
     dangerDescription: string;
     deleteButton: string;
@@ -376,6 +390,20 @@ export const translations: Record<Language, Translations> = {
       infoTitle: 'Informations du compte',
       infoDescription: 'Vos informations de connexion.',
       createdAt: 'Compte créé le',
+      notifications: {
+        title: 'Préférences de notifications',
+        description: 'Choisissez les emails que vous souhaitez recevoir.',
+        eventUpdates: 'Mises à jour d\'événements',
+        eventUpdatesDesc: 'Recevez des mises à jour sur vos événements',
+        newParticipants: 'Nouveaux participants',
+        newParticipantsDesc: 'Quand quelqu\'un rejoint votre événement',
+        votingReminders: 'Rappels de vote',
+        votingRemindersDesc: 'Rappels pour voter sur les dates et lieux',
+        eventFinalized: 'Événement finalisé',
+        eventFinalizedDesc: 'Quand les détails de l\'événement sont confirmés',
+        saveSuccess: 'Préférences sauvegardées',
+        saveError: 'Erreur lors de la sauvegarde',
+      },
       dangerZone: 'Zone de danger',
       dangerDescription: 'Actions irréversibles concernant votre compte et vos données.',
       deleteButton: 'Supprimer mes données',
@@ -728,6 +756,20 @@ export const translations: Record<Language, Translations> = {
       infoTitle: 'Account Information',
       infoDescription: 'Your login information.',
       createdAt: 'Account created on',
+      notifications: {
+        title: 'Notification Preferences',
+        description: 'Choose which emails you want to receive.',
+        eventUpdates: 'Event updates',
+        eventUpdatesDesc: 'Receive updates about your events',
+        newParticipants: 'New participants',
+        newParticipantsDesc: 'When someone joins your event',
+        votingReminders: 'Voting reminders',
+        votingRemindersDesc: 'Reminders to vote on dates and locations',
+        eventFinalized: 'Event finalized',
+        eventFinalizedDesc: 'When event details are confirmed',
+        saveSuccess: 'Preferences saved',
+        saveError: 'Error saving preferences',
+      },
       dangerZone: 'Danger Zone',
       dangerDescription: 'Irreversible actions concerning your account and data.',
       deleteButton: 'Delete My Data',
