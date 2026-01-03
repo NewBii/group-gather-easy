@@ -4,6 +4,19 @@ import { z } from 'zod';
 
 const participantIdSchema = z.string().uuid();
 
+// Session expires after 48 hours for anonymous participants
+const SESSION_DURATION_MS = 48 * 60 * 60 * 1000;
+
+interface StoredParticipantSession {
+  participantId: string;
+  expiresAt: number;
+}
+
+const storedSessionSchema = z.object({
+  participantId: z.string().uuid(),
+  expiresAt: z.number(),
+});
+
 export interface CurrentParticipant {
   id: string;
   name: string;
@@ -12,11 +25,67 @@ export interface CurrentParticipant {
   is_organizer: boolean;
 }
 
+// Clear all participant localStorage entries (call on logout)
+export const clearParticipantStorage = () => {
+  Object.keys(localStorage)
+    .filter(key => key.startsWith('participant_'))
+    .forEach(key => localStorage.removeItem(key));
+};
+
 export const useParticipant = (eventId: string | undefined) => {
   const [currentParticipant, setCurrentParticipant] = useState<CurrentParticipant | null>(null);
   const [loading, setLoading] = useState(true);
 
   const getStorageKey = (eventId: string) => `participant_${eventId}`;
+
+  // Store participant session with expiration
+  const storeParticipantSession = (eventId: string, participantId: string) => {
+    const session: StoredParticipantSession = {
+      participantId,
+      expiresAt: Date.now() + SESSION_DURATION_MS,
+    };
+    localStorage.setItem(getStorageKey(eventId), JSON.stringify(session));
+  };
+
+  // Get participant ID from storage, validating expiration
+  const getStoredParticipantId = (eventId: string): string | null => {
+    const stored = localStorage.getItem(getStorageKey(eventId));
+    if (!stored) return null;
+
+    try {
+      const parsed = JSON.parse(stored);
+      const result = storedSessionSchema.safeParse(parsed);
+      
+      if (!result.success) {
+        // Handle legacy format (plain ID string)
+        const legacyResult = participantIdSchema.safeParse(stored);
+        if (legacyResult.success) {
+          // Migrate to new format
+          storeParticipantSession(eventId, stored);
+          return stored;
+        }
+        localStorage.removeItem(getStorageKey(eventId));
+        return null;
+      }
+
+      // Check expiration
+      if (result.data.expiresAt < Date.now()) {
+        localStorage.removeItem(getStorageKey(eventId));
+        return null;
+      }
+
+      return result.data.participantId;
+    } catch {
+      // Invalid JSON, check if it's a legacy plain ID
+      const legacyResult = participantIdSchema.safeParse(stored);
+      if (legacyResult.success) {
+        storeParticipantSession(eventId, stored);
+        return stored;
+      }
+      localStorage.removeItem(getStorageKey(eventId));
+      return null;
+    }
+  };
 
   // Check if participant exists in localStorage or by user_id
   const checkExistingParticipant = async () => {
@@ -42,25 +111,17 @@ export const useParticipant = (eventId: string | undefined) => {
 
         if (userParticipant) {
           setCurrentParticipant(userParticipant);
-          // Also store in localStorage for convenience
-          localStorage.setItem(getStorageKey(eventId), userParticipant.id);
+          // Also store in localStorage for convenience (with expiration)
+          storeParticipantSession(eventId, userParticipant.id);
           setLoading(false);
           return;
         }
       }
 
-      // Check localStorage for anonymous participant
-      const storedId = localStorage.getItem(getStorageKey(eventId));
+      // Check localStorage for anonymous participant (with expiration validation)
+      const storedId = getStoredParticipantId(eventId);
       
       if (storedId) {
-        // Validate stored ID format
-        const parseResult = participantIdSchema.safeParse(storedId);
-        if (!parseResult.success) {
-          localStorage.removeItem(getStorageKey(eventId));
-          setLoading(false);
-          return;
-        }
-
         // Verify participant still exists in database
         const { data: participant } = await supabase
           .from('participants')
@@ -116,7 +177,7 @@ export const useParticipant = (eventId: string | undefined) => {
 
       if (participant) {
         setCurrentParticipant(participant);
-        localStorage.setItem(getStorageKey(eventId), participant.id);
+        storeParticipantSession(eventId, participant.id);
       }
 
       return participant;
