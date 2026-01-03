@@ -94,6 +94,12 @@ interface Translations {
   myEvents: { title: string; createNew: string; noEvents: string; createFirst: string; noDescription: string; };
   common: { loading: string; error: string; back: string; cancel: string; };
   notFound: { title: string; description: string; backHome: string; };
+  cookies: {
+    title: string;
+    description: string;
+    accept: string;
+    decline: string;
+  };
   footer: {
     allRightsReserved: string;
     privacyPolicy: string;
@@ -356,6 +362,12 @@ export const translations: Record<Language, Translations> = {
       title: 'Page non trouvée',
       description: 'La page que vous recherchez n\'existe pas.',
       backHome: 'Retour à l\'accueil',
+    },
+    cookies: {
+      title: 'Nous utilisons des cookies',
+      description: 'Ce site utilise des cookies essentiels pour assurer son bon fonctionnement. Aucun cookie de suivi ou publicitaire n\'est utilisé.',
+      accept: 'Accepter',
+      decline: 'Refuser',
     },
     footer: {
       allRightsReserved: 'Tous droits réservés.',
@@ -684,6 +696,12 @@ export const translations: Record<Language, Translations> = {
       title: 'Page not found',
       description: 'The page you are looking for does not exist.',
       backHome: 'Back to home',
+    },
+    cookies: {
+      title: 'We use cookies',
+      description: 'This site uses essential cookies to ensure proper functionality. No tracking or advertising cookies are used.',
+      accept: 'Accept',
+      decline: 'Decline',
     },
     footer: {
       allRightsReserved: 'All rights reserved.',
