@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { clearParticipantStorage } from '@/hooks/useParticipant';
 import { User } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -139,6 +140,9 @@ const Account = () => {
         .from('events')
         .delete()
         .eq('created_by', user.id);
+
+      // Clear participant localStorage entries
+      clearParticipantStorage();
 
       // Sign out the user
       await supabase.auth.signOut();
