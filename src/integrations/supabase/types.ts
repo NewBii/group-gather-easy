@@ -392,7 +392,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      owns_participant: { Args: { p_participant_id: string }; Returns: boolean }
     }
     Enums: {
       event_status: "draft" | "active" | "completed" | "cancelled"
