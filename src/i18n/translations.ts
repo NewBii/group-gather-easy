@@ -59,6 +59,9 @@ interface Translations {
     description: string;
     categories: { friends: string; family: string; birthdays: string; tips: string; };
     comingSoon: string;
+    readTime: string;
+    backToGuides: string;
+    backToCategory: string;
   };
   event: { notFound: string; backHome: string; };
   auth: {
@@ -336,6 +339,9 @@ export const translations: Record<Language, Translations> = {
         tips: 'Astuces',
       },
       comingSoon: 'Contenu bientôt disponible',
+      readTime: 'de lecture',
+      backToGuides: 'Retour aux guides',
+      backToCategory: 'Retour à {category}',
     },
     event: {
       notFound: 'Événement non trouvé',
@@ -702,6 +708,9 @@ export const translations: Record<Language, Translations> = {
         tips: 'Tips',
       },
       comingSoon: 'Content coming soon',
+      readTime: 'read',
+      backToGuides: 'Back to guides',
+      backToCategory: 'Back to {category}',
     },
     event: {
       notFound: 'Event not found',

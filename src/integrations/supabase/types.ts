@@ -223,6 +223,150 @@ export type Database = {
         }
         Relationships: []
       }
+      guide_article_translations: {
+        Row: {
+          article_id: string
+          content: string
+          excerpt: string | null
+          id: string
+          language: string
+          meta_description: string | null
+          meta_title: string | null
+          title: string
+        }
+        Insert: {
+          article_id: string
+          content: string
+          excerpt?: string | null
+          id?: string
+          language: string
+          meta_description?: string | null
+          meta_title?: string | null
+          title: string
+        }
+        Update: {
+          article_id?: string
+          content?: string
+          excerpt?: string | null
+          id?: string
+          language?: string
+          meta_description?: string | null
+          meta_title?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guide_article_translations_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "guide_articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guide_articles: {
+        Row: {
+          category_id: string
+          cover_image_url: string | null
+          created_at: string
+          id: string
+          is_published: boolean
+          published_at: string | null
+          reading_time_minutes: number
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          cover_image_url?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          published_at?: string | null
+          reading_time_minutes?: number
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          cover_image_url?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          published_at?: string | null
+          reading_time_minutes?: number
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guide_articles_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "guide_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guide_categories: {
+        Row: {
+          created_at: string
+          icon: string
+          id: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          icon?: string
+          id?: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          icon?: string
+          id?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      guide_category_translations: {
+        Row: {
+          category_id: string
+          description: string | null
+          id: string
+          language: string
+          name: string
+        }
+        Insert: {
+          category_id: string
+          description?: string | null
+          id?: string
+          language: string
+          name: string
+        }
+        Update: {
+          category_id?: string
+          description?: string | null
+          id?: string
+          language?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guide_category_translations_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "guide_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       location_suggestions: {
         Row: {
           address: string | null
