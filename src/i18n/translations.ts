@@ -127,7 +127,45 @@ interface Translations {
     deleteSuccess: string;
     deleteError: string;
   };
-  common: { loading: string; error: string; back: string; cancel: string; };
+  common: { loading: string; error: string; back: string; cancel: string; save: string; delete: string; backHome: string; };
+  admin: {
+    loginRequired: string;
+    loginToAccess: string;
+    accessDenied: string;
+    noPermission: string;
+    manageArticles: string;
+    newArticle: string;
+    editArticle: string;
+    noArticles: string;
+    createFirst: string;
+    published: string;
+    draft: string;
+    confirmDelete: string;
+    deleteWarning: string;
+    articleDeleted: string;
+    articlePublished: string;
+    articleUnpublished: string;
+    articleCreated: string;
+    articleUpdated: string;
+    backToList: string;
+    settings: string;
+    category: string;
+    selectCategory: string;
+    slug: string;
+    coverImage: string;
+    readingTime: string;
+    sortOrder: string;
+    content: string;
+    title: string;
+    excerpt: string;
+    contentMarkdown: string;
+    metaTitle: string;
+    metaDescription: string;
+    fillRequired: string;
+    frenchRequired: string;
+    showPreview: string;
+    hidePreview: string;
+  };
   notFound: { title: string; description: string; backHome: string; };
   cookies: {
     title: string;
@@ -427,6 +465,47 @@ export const translations: Record<Language, Translations> = {
       error: 'Une erreur est survenue',
       back: 'Retour',
       cancel: 'Annuler',
+      save: 'Enregistrer',
+      delete: 'Supprimer',
+      backHome: 'Retour à l\'accueil',
+    },
+    admin: {
+      loginRequired: 'Connexion requise',
+      loginToAccess: 'Veuillez vous connecter pour accéder à l\'espace administration.',
+      accessDenied: 'Accès refusé',
+      noPermission: 'Vous n\'avez pas les permissions pour accéder à cette page.',
+      manageArticles: 'Gérer les articles',
+      newArticle: 'Nouvel article',
+      editArticle: 'Modifier l\'article',
+      noArticles: 'Aucun article pour le moment',
+      createFirst: 'Créer votre premier article',
+      published: 'Publié',
+      draft: 'Brouillon',
+      confirmDelete: 'Supprimer l\'article ?',
+      deleteWarning: 'Cette action est irréversible.',
+      articleDeleted: 'Article supprimé',
+      articlePublished: 'Article publié',
+      articleUnpublished: 'Article dépublié',
+      articleCreated: 'Article créé',
+      articleUpdated: 'Article mis à jour',
+      backToList: 'Retour à la liste',
+      settings: 'Paramètres',
+      category: 'Catégorie',
+      selectCategory: 'Sélectionner une catégorie',
+      slug: 'Slug',
+      coverImage: 'Image de couverture (URL)',
+      readingTime: 'Temps de lecture (min)',
+      sortOrder: 'Ordre d\'affichage',
+      content: 'Contenu',
+      title: 'Titre',
+      excerpt: 'Extrait',
+      contentMarkdown: 'Contenu (Markdown)',
+      metaTitle: 'Titre SEO',
+      metaDescription: 'Description SEO',
+      fillRequired: 'Veuillez remplir les champs requis',
+      frenchRequired: 'Le titre et le contenu en français sont obligatoires',
+      showPreview: 'Aperçu',
+      hidePreview: 'Masquer l\'aperçu',
     },
     notFound: {
       title: 'Page non trouvée',
@@ -796,6 +875,47 @@ export const translations: Record<Language, Translations> = {
       error: 'An error occurred',
       back: 'Back',
       cancel: 'Cancel',
+      save: 'Save',
+      delete: 'Delete',
+      backHome: 'Back to Home',
+    },
+    admin: {
+      loginRequired: 'Login Required',
+      loginToAccess: 'Please login to access the admin area.',
+      accessDenied: 'Access Denied',
+      noPermission: 'You do not have permission to access this page.',
+      manageArticles: 'Manage Articles',
+      newArticle: 'New Article',
+      editArticle: 'Edit Article',
+      noArticles: 'No articles yet',
+      createFirst: 'Create your first article',
+      published: 'Published',
+      draft: 'Draft',
+      confirmDelete: 'Delete Article?',
+      deleteWarning: 'This action cannot be undone.',
+      articleDeleted: 'Article deleted',
+      articlePublished: 'Article published',
+      articleUnpublished: 'Article unpublished',
+      articleCreated: 'Article created',
+      articleUpdated: 'Article updated',
+      backToList: 'Back to list',
+      settings: 'Settings',
+      category: 'Category',
+      selectCategory: 'Select category',
+      slug: 'Slug',
+      coverImage: 'Cover Image URL',
+      readingTime: 'Reading Time (min)',
+      sortOrder: 'Sort Order',
+      content: 'Content',
+      title: 'Title',
+      excerpt: 'Excerpt',
+      contentMarkdown: 'Content (Markdown)',
+      metaTitle: 'Meta Title (SEO)',
+      metaDescription: 'Meta Description (SEO)',
+      fillRequired: 'Please fill in required fields',
+      frenchRequired: 'French title and content are required',
+      showPreview: 'Preview',
+      hidePreview: 'Hide Preview',
     },
     notFound: {
       title: 'Page not found',
