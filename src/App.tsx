@@ -8,6 +8,8 @@ import { Layout } from "@/components/Layout";
 import Index from "./pages/Index";
 import CreateEvent from "./pages/CreateEvent";
 import Guides from "./pages/Guides";
+import GuideCategory from "./pages/GuideCategory";
+import GuideArticle from "./pages/GuideArticle";
 import Event from "./pages/Event";
 import Auth from "./pages/Auth";
 import MyEvents from "./pages/MyEvents";
@@ -29,6 +31,8 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/create" element={<CreateEvent />} />
               <Route path="/guides" element={<Guides />} />
+              <Route path="/guides/:category" element={<GuideCategory />} />
+              <Route path="/guides/:category/:slug" element={<GuideArticle />} />
               <Route path="/event/:id" element={<Event />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/my-events" element={<MyEvents />} />
