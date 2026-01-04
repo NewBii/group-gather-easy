@@ -10,6 +10,8 @@ import CreateEvent from "./pages/CreateEvent";
 import Guides from "./pages/Guides";
 import GuideCategory from "./pages/GuideCategory";
 import GuideArticle from "./pages/GuideArticle";
+import AdminGuides from "./pages/AdminGuides";
+import AdminArticleEditor from "./pages/AdminArticleEditor";
 import Event from "./pages/Event";
 import Auth from "./pages/Auth";
 import MyEvents from "./pages/MyEvents";
@@ -33,6 +35,8 @@ const App = () => (
               <Route path="/guides" element={<Guides />} />
               <Route path="/guides/:category" element={<GuideCategory />} />
               <Route path="/guides/:category/:slug" element={<GuideArticle />} />
+              <Route path="/admin/guides" element={<AdminGuides />} />
+              <Route path="/admin/guides/:id" element={<AdminArticleEditor />} />
               <Route path="/event/:id" element={<Event />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/my-events" element={<MyEvents />} />
