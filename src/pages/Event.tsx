@@ -18,6 +18,23 @@ import { LockdownView } from '@/components/event/LockdownView';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface SpecialTrait {
+  type: 'kid_friendly' | 'accessibility' | 'dietary' | 'budget' | 'midpoint' | 'nightlife' | 'outdoor' | 'indoor';
+  label: string;
+  description?: string;
+}
+
+interface ConstraintsApplied {
+  date_locked?: boolean;
+  location_locked?: boolean;
+  time_locked?: boolean;
+}
+
+interface MidpointInfoData {
+  suggested_location?: string;
+  travel_logic?: string;
+}
+
 interface AIScenario {
   id: string;
   scenario_label: string;
@@ -26,6 +43,22 @@ interface AIScenario {
   suggested_date?: string;
   suggested_time_of_day?: string;
   suggested_vibe?: string;
+  metadata?: {
+    constraints_applied?: ConstraintsApplied;
+    special_traits?: SpecialTrait[];
+    midpoint_info?: MidpointInfoData;
+  } | null;
+}
+
+interface ContextAnalysis {
+  constraints?: {
+    date?: { type: 'fixed' | 'flexible' | 'missing'; displayLabel?: string };
+    location?: { type: 'fixed' | 'flexible' | 'missing'; displayLabel?: string };
+    time?: { type: 'fixed' | 'flexible' | 'missing'; displayLabel?: string };
+  };
+  specialRequirements?: Array<{ type: string; label: string }>;
+  participantOrigins?: string[];
+  isVague?: boolean;
 }
 
 const Event = () => {
@@ -36,6 +69,7 @@ const Event = () => {
   const [scenarios, setScenarios] = useState<AIScenario[]>([]);
   const [winningScenario, setWinningScenario] = useState<AIScenario | null>(null);
   const [user, setUser] = useState<{ id: string } | null>(null);
+  const [contextAnalysis, setContextAnalysis] = useState<ContextAnalysis | null>(null);
 
   const {
     event,
@@ -69,6 +103,13 @@ const Event = () => {
       setUser(session?.user ? { id: session.user.id } : null);
     });
   }, []);
+
+  // Extract context analysis from event location_data
+  useEffect(() => {
+    if (eventData?.location_data?.contextAnalysis) {
+      setContextAnalysis(eventData.location_data.contextAnalysis);
+    }
+  }, [eventData?.location_data]);
 
   // Fetch AI scenarios for AI Concierge events
   useEffect(() => {
@@ -108,27 +149,56 @@ const Event = () => {
         return;
       }
 
-      // Calculate winner
-      const scoreMap = new Map<string, number>();
-      scenarios.forEach(s => scoreMap.set(s.id, 0));
+      // Calculate winner with heavier veto penalty
+      const scoreMap = new Map<string, { score: number; dealbreakers: number }>();
+      scenarios.forEach(s => scoreMap.set(s.id, { score: 0, dealbreakers: 0 }));
+      
       votes.forEach((vote: any) => {
-        const current = scoreMap.get(vote.scenario_id) || 0;
+        const current = scoreMap.get(vote.scenario_id) || { score: 0, dealbreakers: 0 };
         if (vote.is_dealbreaker) {
-          scoreMap.set(vote.scenario_id, current - 5);
+          current.dealbreakers += 1;
+          current.score -= 10; // Heavy penalty for vetoes
         } else if (vote.rank) {
-          scoreMap.set(vote.scenario_id, current + (vote.rank === 1 ? 3 : vote.rank === 2 ? 2 : 1));
+          current.score += vote.rank === 1 ? 3 : vote.rank === 2 ? 2 : 1;
         }
+        scoreMap.set(vote.scenario_id, current);
       });
 
+      // Find winner: prefer options with no dealbreakers
       let winnerId = scenarios[0]?.id;
       let maxScore = -Infinity;
-      scoreMap.forEach((score, id) => {
-        if (score > maxScore) { maxScore = score; winnerId = id; }
+      let winnerHasDealbreakers = true;
+
+      scoreMap.forEach((data, id) => {
+        // Prefer no dealbreakers over higher score
+        if (data.dealbreakers === 0 && winnerHasDealbreakers) {
+          winnerId = id;
+          maxScore = data.score;
+          winnerHasDealbreakers = false;
+        } else if ((data.dealbreakers === 0) === !winnerHasDealbreakers && data.score > maxScore) {
+          winnerId = id;
+          maxScore = data.score;
+        }
       });
 
       const winner = scenarios.find(s => s.id === winnerId);
 
-      await supabase.from('events').update({ ai_phase: 'lockdown', final_date: winner?.suggested_date || null }).eq('id', event.id);
+      // Check for consensus
+      const winnerData = scoreMap.get(winnerId);
+      if (winnerData && winnerData.dealbreakers > 0) {
+        toast({ 
+          title: 'Warning', 
+          description: `The leading option has ${winnerData.dealbreakers} veto(s). You may want to discuss with the group first.`,
+          variant: 'destructive' 
+        });
+        return;
+      }
+
+      await supabase.from('events').update({ 
+        ai_phase: 'lockdown', 
+        final_date: winner?.suggested_date || null 
+      }).eq('id', event.id);
+      
       setWinningScenario(winner || null);
       toast({ title: t.aiConcierge.lockdown.title });
       refetch();
@@ -180,7 +250,15 @@ const Event = () => {
               <AIProgressStepper currentPhase="pulse" />
               <ParticipantJoinForm eventSlug={event.unique_slug} onJoin={joinEvent} currentParticipant={currentParticipant} />
               {scenarios.length > 0 && (
-                <PulseVoting eventId={event.id} scenarios={scenarios} participantId={currentParticipant?.id} totalParticipants={participants.length} isOrganizer={isOrganizer} onFinalize={handleFinalize} />
+                <PulseVoting 
+                  eventId={event.id} 
+                  scenarios={scenarios} 
+                  participantId={currentParticipant?.id} 
+                  totalParticipants={participants.length} 
+                  isOrganizer={isOrganizer} 
+                  onFinalize={handleFinalize}
+                  contextAnalysis={contextAnalysis}
+                />
               )}
               <div className="lg:hidden">
                 <ParticipantsList participants={participants} currentParticipantId={currentParticipant?.id} />
