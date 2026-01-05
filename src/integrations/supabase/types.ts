@@ -723,6 +723,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_participant_of_event: {
+        Args: { p_event_id: string; p_user_id: string }
+        Returns: boolean
+      }
       owns_participant: { Args: { p_participant_id: string }; Returns: boolean }
     }
     Enums: {
