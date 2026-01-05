@@ -4,39 +4,16 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, MapPin, Users, Sparkles, X, Plus } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { EventCreatedPrompt } from '@/components/EventCreatedPrompt';
+import { ProgressIndicator } from '@/components/create-event/ProgressIndicator';
+import { Step1NameAndVibe } from '@/components/create-event/Step1NameAndVibe';
+import { Step2DateAndLocation } from '@/components/create-event/Step2DateAndLocation';
+import { Step3HelpersWanted } from '@/components/create-event/Step3HelpersWanted';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
-import { Badge } from '@/components/ui/badge';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { Form } from '@/components/ui/form';
 import { toast } from 'sonner';
 
 interface DatePeriod {
@@ -54,29 +31,28 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const generateSlug = () => {
-  return Math.random().toString(36).substring(2, 10);
-};
-
-const generateId = () => {
-  return Math.random().toString(36).substring(2, 10);
-};
+const generateSlug = () => Math.random().toString(36).substring(2, 10);
+const generateId = () => Math.random().toString(36).substring(2, 10);
 
 const CreateEvent = () => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const navigate = useNavigate();
+  
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Success state
   const [createdEvent, setCreatedEvent] = useState<{ id: string; slug: string } | null>(null);
-  
-  // Day event: multiple individual dates
+
+  // Date state
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-  
-  // Trip: multiple date periods
   const [datePeriods, setDatePeriods] = useState<DatePeriod[]>([
-    { id: generateId(), startDate: undefined, endDate: undefined }
+    { id: generateId(), startDate: undefined, endDate: undefined },
   ]);
+  const [decideLaterDate, setDecideLaterDate] = useState(false);
+  const [decideLaterLocation, setDecideLaterLocation] = useState(false);
+
+  // Tasks state (optional helpers)
+  const [tasks, setTasks] = useState<string[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -96,45 +72,25 @@ const CreateEvent = () => {
     setDatePeriods([{ id: generateId(), startDate: undefined, endDate: undefined }]);
   }, [eventType]);
 
-  const handleDateSelect = (date: Date | undefined) => {
-    if (!date) return;
-    
-    const dateExists = selectedDates.some(
-      (d) => format(d, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-    );
-    
-    if (dateExists) {
-      setSelectedDates(selectedDates.filter(
-        (d) => format(d, 'yyyy-MM-dd') !== format(date, 'yyyy-MM-dd')
-      ));
-    } else {
-      setSelectedDates([...selectedDates, date].sort((a, b) => a.getTime() - b.getTime()));
+  const steps = [
+    { number: 1, label: t.createEvent.wizard.steps.nameAndVibe },
+    { number: 2, label: t.createEvent.wizard.steps.dateAndLocation },
+    { number: 3, label: t.createEvent.wizard.steps.helpersWanted, optional: true },
+  ];
+
+  const validateStep1 = () => {
+    const title = form.getValues('title');
+    if (!title || title.trim() === '') {
+      form.setError('title', { message: 'Title is required' });
+      return false;
     }
+    return true;
   };
 
-  const removeDate = (dateToRemove: Date) => {
-    setSelectedDates(selectedDates.filter(
-      (d) => format(d, 'yyyy-MM-dd') !== format(dateToRemove, 'yyyy-MM-dd')
-    ));
-  };
+  const validateStep2 = (): boolean => {
+    // If decide later is checked, no date validation needed
+    if (decideLaterDate) return true;
 
-  const addDatePeriod = () => {
-    setDatePeriods([...datePeriods, { id: generateId(), startDate: undefined, endDate: undefined }]);
-  };
-
-  const removeDatePeriod = (id: string) => {
-    if (datePeriods.length > 1) {
-      setDatePeriods(datePeriods.filter((p) => p.id !== id));
-    }
-  };
-
-  const updateDatePeriod = (id: string, field: 'startDate' | 'endDate', value: Date | undefined) => {
-    setDatePeriods(datePeriods.map((p) => 
-      p.id === id ? { ...p, [field]: value } : p
-    ));
-  };
-
-  const validateDates = (): boolean => {
     if (eventType === 'day_event') {
       if (selectedDates.length === 0) {
         toast.error(t.createEvent.form.validation.minOneDateRequired);
@@ -150,36 +106,59 @@ const CreateEvent = () => {
     return true;
   };
 
-  const onSubmit = async (values: FormValues) => {
-    if (!validateDates()) return;
-    
+  const handleNext = () => {
+    if (currentStep === 1 && !validateStep1()) return;
+    if (currentStep === 2 && !validateStep2()) return;
+    setCurrentStep((prev) => Math.min(prev + 1, 3));
+  };
+
+  const handleBack = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleSubmit = async () => {
+    if (!validateStep1()) {
+      setCurrentStep(1);
+      return;
+    }
+    if (!validateStep2()) {
+      setCurrentStep(2);
+      return;
+    }
+
+    const values = form.getValues();
     setIsSubmitting(true);
+
     try {
       const slug = generateSlug();
-      
-      // Calculate date range bounds
-      let dateRangeStart: Date;
-      let dateRangeEnd: Date;
-      
-      if (eventType === 'day_event') {
-        dateRangeStart = selectedDates[0];
-        dateRangeEnd = selectedDates[selectedDates.length - 1];
-      } else {
-        const validPeriods = datePeriods.filter((p) => p.startDate && p.endDate);
-        const allDates = validPeriods.flatMap((p) => [p.startDate!, p.endDate!]);
-        dateRangeStart = new Date(Math.min(...allDates.map((d) => d.getTime())));
-        dateRangeEnd = new Date(Math.max(...allDates.map((d) => d.getTime())));
+
+      // Calculate date range bounds (nullable if decide later)
+      let dateRangeStart: Date | null = null;
+      let dateRangeEnd: Date | null = null;
+
+      if (!decideLaterDate) {
+        if (eventType === 'day_event' && selectedDates.length > 0) {
+          dateRangeStart = selectedDates[0];
+          dateRangeEnd = selectedDates[selectedDates.length - 1];
+        } else if (eventType === 'trip') {
+          const validPeriods = datePeriods.filter((p) => p.startDate && p.endDate);
+          if (validPeriods.length > 0) {
+            const allDates = validPeriods.flatMap((p) => [p.startDate!, p.endDate!]);
+            dateRangeStart = new Date(Math.min(...allDates.map((d) => d.getTime())));
+            dateRangeEnd = new Date(Math.max(...allDates.map((d) => d.getTime())));
+          }
+        }
       }
-      
+
       const { data: eventData, error: eventError } = await supabase
         .from('events')
         .insert({
           title: values.title,
           description: values.description || null,
           event_type: values.eventType,
-          date_range_start: format(dateRangeStart, 'yyyy-MM-dd'),
-          date_range_end: format(dateRangeEnd, 'yyyy-MM-dd'),
-          location_type: values.locationType,
+          date_range_start: dateRangeStart ? format(dateRangeStart, 'yyyy-MM-dd') : null,
+          date_range_end: dateRangeEnd ? format(dateRangeEnd, 'yyyy-MM-dd') : null,
+          location_type: decideLaterLocation ? null : values.locationType,
           unique_slug: slug,
           status: 'active',
         })
@@ -188,28 +167,47 @@ const CreateEvent = () => {
 
       if (eventError) throw eventError;
 
-      // Insert date options
-      const dateOptionsToInsert = eventType === 'day_event'
-        ? selectedDates.map((date) => ({
-            event_id: eventData.id,
-            start_date: format(date, 'yyyy-MM-dd'),
-            end_date: null,
-          }))
-        : datePeriods
-            .filter((p) => p.startDate && p.endDate)
-            .map((period) => ({
-              event_id: eventData.id,
-              start_date: format(period.startDate!, 'yyyy-MM-dd'),
-              end_date: format(period.endDate!, 'yyyy-MM-dd'),
-            }));
+      // Insert date options if dates were selected
+      if (!decideLaterDate) {
+        const dateOptionsToInsert =
+          eventType === 'day_event'
+            ? selectedDates.map((date) => ({
+                event_id: eventData.id,
+                start_date: format(date, 'yyyy-MM-dd'),
+                end_date: null,
+              }))
+            : datePeriods
+                .filter((p) => p.startDate && p.endDate)
+                .map((period) => ({
+                  event_id: eventData.id,
+                  start_date: format(period.startDate!, 'yyyy-MM-dd'),
+                  end_date: format(period.endDate!, 'yyyy-MM-dd'),
+                }));
 
-      const { error: dateOptionsError } = await supabase
-        .from('date_options')
-        .insert(dateOptionsToInsert);
+        if (dateOptionsToInsert.length > 0) {
+          const { error: dateOptionsError } = await supabase
+            .from('date_options')
+            .insert(dateOptionsToInsert);
 
-      if (dateOptionsError) throw dateOptionsError;
+          if (dateOptionsError) throw dateOptionsError;
+        }
+      }
 
-      // Show success prompt instead of navigating
+      // Insert tasks if any were added
+      if (tasks.length > 0) {
+        const tasksToInsert = tasks.map((title) => ({
+          event_id: eventData.id,
+          title,
+        }));
+
+        const { error: tasksError } = await supabase
+          .from('event_tasks')
+          .insert(tasksToInsert);
+
+        if (tasksError) throw tasksError;
+      }
+
+      // Show success prompt
       setCreatedEvent({ id: eventData.id, slug: slug });
     } catch (error) {
       console.error('Error creating event:', error);
@@ -219,34 +217,13 @@ const CreateEvent = () => {
     }
   };
 
-  const locationOptions = [
-    {
-      value: 'set_venues',
-      icon: MapPin,
-      label: t.createEvent.locationOptions.setVenues.label,
-      description: t.createEvent.locationOptions.setVenues.description,
-    },
-    {
-      value: 'suggestions',
-      icon: Users,
-      label: t.createEvent.locationOptions.suggestions.label,
-      description: t.createEvent.locationOptions.suggestions.description,
-    },
-    {
-      value: 'fair_spot',
-      icon: Sparkles,
-      label: t.createEvent.locationOptions.fairSpot.label,
-      description: t.createEvent.locationOptions.fairSpot.description,
-    },
-  ];
-
   // Show success prompt if event was created
   if (createdEvent) {
     return (
       <div className="container py-12 md:py-16">
-        <EventCreatedPrompt 
-          eventSlug={createdEvent.slug} 
-          eventId={createdEvent.id} 
+        <EventCreatedPrompt
+          eventSlug={createdEvent.slug}
+          eventId={createdEvent.id}
           eventTitle={form.getValues('title')}
         />
       </div>
@@ -254,301 +231,87 @@ const CreateEvent = () => {
   }
 
   return (
-    <div className="container py-12 md:py-16">
+    <div className="container py-8 md:py-12">
       <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-            {t.createEvent.title}
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            {t.createEvent.description}
-          </p>
-        </div>
+        {/* Progress Indicator */}
+        <ProgressIndicator steps={steps} currentStep={currentStep} />
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* Title */}
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t.createEvent.form.title}</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder={t.createEvent.form.titlePlaceholder} 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+        {/* Form Card */}
+        <div className="bg-card rounded-3xl border border-border/50 shadow-sm p-6 md:p-10">
+          <Form {...form}>
+            <form onSubmit={(e) => e.preventDefault()}>
+              {/* Step 1: Name & Vibe */}
+              {currentStep === 1 && <Step1NameAndVibe form={form} />}
+
+              {/* Step 2: Date & Location */}
+              {currentStep === 2 && (
+                <Step2DateAndLocation
+                  form={form}
+                  selectedDates={selectedDates}
+                  setSelectedDates={setSelectedDates}
+                  datePeriods={datePeriods}
+                  setDatePeriods={setDatePeriods}
+                  decideLaterDate={decideLaterDate}
+                  setDecideLaterDate={setDecideLaterDate}
+                  decideLaterLocation={decideLaterLocation}
+                  setDecideLaterLocation={setDecideLaterLocation}
+                />
               )}
-            />
 
-            {/* Description */}
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t.createEvent.form.description}</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder={t.createEvent.form.descriptionPlaceholder}
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    {t.createEvent.form.descriptionHint}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              {/* Step 3: Helpers Wanted */}
+              {currentStep === 3 && <Step3HelpersWanted tasks={tasks} setTasks={setTasks} />}
 
-            {/* Event Type */}
-            <FormField
-              control={form.control}
-              name="eventType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t.createEvent.form.eventType}</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t.createEvent.form.selectEventType} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="day_event">
-                        {t.createEvent.form.dayEvent}
-                      </SelectItem>
-                      <SelectItem value="trip">
-                        {t.createEvent.form.trip}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              {/* Navigation Buttons */}
+              <div className="flex items-center justify-between mt-10 pt-6 border-t border-border/50">
+                {currentStep > 1 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleBack}
+                    className="gap-2"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    {t.createEvent.wizard.back}
+                  </Button>
+                ) : (
+                  <div />
+                )}
 
-            {/* Date Selection - Day Event */}
-            {eventType === 'day_event' && (
-              <div className="space-y-4">
-                <Label>{t.createEvent.form.selectDatesForVoting}</Label>
-                <div className="border border-border rounded-lg p-4 bg-card">
-                  <Calendar
-                    mode="multiple"
-                    selected={selectedDates}
-                    onSelect={(dates) => setSelectedDates(dates || [])}
-                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                    className="pointer-events-auto mx-auto"
-                  />
-                </div>
-                
-                {selectedDates.length > 0 && (
-                  <div className="space-y-2">
-                    <Label className="text-sm text-muted-foreground">
-                      {t.createEvent.form.selectedDates} ({selectedDates.length})
-                    </Label>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedDates.map((date) => (
-                        <Badge
-                          key={format(date, 'yyyy-MM-dd')}
-                          variant="secondary"
-                          className="flex items-center gap-1 px-3 py-1"
-                        >
-                          {format(date, 'PPP')}
-                          <button
-                            type="button"
-                            onClick={() => removeDate(date)}
-                            className="ml-1 hover:text-destructive"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
+                {currentStep < 3 ? (
+                  <Button
+                    type="button"
+                    onClick={handleNext}
+                    className="gap-2 px-6"
+                  >
+                    {t.createEvent.wizard.continue}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      className="px-6"
+                    >
+                      {t.createEvent.wizard.helpers.skip}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      className="gap-2 px-6"
+                    >
+                      {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {t.createEvent.wizard.createEvent}
+                    </Button>
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Date Selection - Trip */}
-            {eventType === 'trip' && (
-              <div className="space-y-4">
-                <Label>{t.createEvent.form.datePeriods}</Label>
-                
-                <div className="space-y-4">
-                  {datePeriods.map((period, index) => (
-                    <div
-                      key={period.id}
-                      className="border border-border rounded-lg p-4 bg-card space-y-4"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-muted-foreground">
-                          {t.createEvent.form.period} {index + 1}
-                        </span>
-                        {datePeriods.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeDatePeriod(period.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <X className="h-4 w-4 mr-1" />
-                            {t.createEvent.form.remove}
-                          </Button>
-                        )}
-                      </div>
-                      
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label className="text-sm">{t.createEvent.form.startDate}</Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  'w-full pl-3 text-left font-normal',
-                                  !period.startDate && 'text-muted-foreground'
-                                )}
-                              >
-                                {period.startDate ? (
-                                  format(period.startDate, 'PPP')
-                                ) : (
-                                  <span>{t.createEvent.form.pickDate}</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={period.startDate}
-                                onSelect={(date) => updateDatePeriod(period.id, 'startDate', date)}
-                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                                initialFocus
-                                className="pointer-events-auto"
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label className="text-sm">{t.createEvent.form.endDate}</Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  'w-full pl-3 text-left font-normal',
-                                  !period.endDate && 'text-muted-foreground'
-                                )}
-                              >
-                                {period.endDate ? (
-                                  format(period.endDate, 'PPP')
-                                ) : (
-                                  <span>{t.createEvent.form.pickDate}</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={period.endDate}
-                                onSelect={(date) => updateDatePeriod(period.id, 'endDate', date)}
-                                disabled={(date) => {
-                                  const today = new Date(new Date().setHours(0, 0, 0, 0));
-                                  return date < today || (period.startDate && date < period.startDate);
-                                }}
-                                initialFocus
-                                className="pointer-events-auto"
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addDatePeriod}
-                  className="w-full"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t.createEvent.form.addDatePeriod}
-                </Button>
-              </div>
-            )}
-
-            {/* Location Type */}
-            <FormField
-              control={form.control}
-              name="locationType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t.createEvent.form.locationType}</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="grid gap-4"
-                    >
-                      {locationOptions.map((option) => (
-                        <div key={option.value}>
-                          <RadioGroupItem
-                            value={option.value}
-                            id={option.value}
-                            className="peer sr-only"
-                          />
-                          <Label
-                            htmlFor={option.value}
-                            className={cn(
-                              'flex items-start gap-4 rounded-lg border-2 border-border bg-card p-4 cursor-pointer transition-all',
-                              'hover:bg-accent/50 hover:border-accent',
-                              'peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5'
-                            )}
-                          >
-                            <div className="rounded-full bg-secondary p-2">
-                              <option.icon className="h-5 w-5 text-primary" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-medium text-foreground">
-                                {option.label}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {option.description}
-                              </p>
-                            </div>
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Submit */}
-            <Button
-              type="submit"
-              size="lg"
-              className="w-full"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? t.common.loading : t.createEvent.form.submit}
-            </Button>
-          </form>
-        </Form>
+            </form>
+          </Form>
+        </div>
       </div>
     </div>
   );
