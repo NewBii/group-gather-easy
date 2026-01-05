@@ -53,6 +53,33 @@ interface Translations {
       suggestions: { label: string; description: string; };
       fairSpot: { label: string; description: string; };
     };
+    wizard: {
+      steps: {
+        nameAndVibe: string;
+        dateAndLocation: string;
+        helpersWanted: string;
+      };
+      vibeLabel: string;
+      vibePlaceholder: string;
+      dateTitle: string;
+      locationTitle: string;
+      decideLater: string;
+      decideLaterDateHint: string;
+      decideLaterLocationHint: string;
+      continue: string;
+      back: string;
+      createEvent: string;
+      helpers: {
+        title: string;
+        subtitle: string;
+        taskPlaceholder: string;
+        quickAdd: string;
+        suggestions: string[];
+        addedTasks: string;
+        noTasksHint: string;
+        skip: string;
+      };
+    };
   };
   guides: {
     title: string;
@@ -364,6 +391,33 @@ export const translations: Record<Language, Translations> = {
         fairSpot: {
           label: 'Point central équitable',
           description: 'Trouvez automatiquement un lieu équidistant pour tous les participants.',
+        },
+      },
+      wizard: {
+        steps: {
+          nameAndVibe: 'Nom & Ambiance',
+          dateAndLocation: 'Quand & Où',
+          helpersWanted: 'Coups de main',
+        },
+        vibeLabel: "Quelle est l'ambiance ?",
+        vibePlaceholder: 'Sortie décontractée, dîner formel, voyage aventure...',
+        dateTitle: 'Quand ?',
+        locationTitle: 'Où ?',
+        decideLater: 'Décider plus tard',
+        decideLaterDateHint: 'Vous déciderez des dates avec votre groupe plus tard',
+        decideLaterLocationHint: 'Vous trouverez le lieu ensemble',
+        continue: 'Continuer',
+        back: 'Retour',
+        createEvent: "Créer l'événement",
+        helpers: {
+          title: 'Besoin de coups de main ?',
+          subtitle: 'Ajoutez des petites tâches que vos amis peuvent prendre en charge',
+          taskPlaceholder: 'Ex: Ramener des boissons, Préparer la playlist...',
+          quickAdd: 'Ajout rapide :',
+          suggestions: ['Ramener des boissons', 'Préparer la musique', 'Décorations', 'Chercher le gâteau'],
+          addedTasks: 'Tâches',
+          noTasksHint: 'Aucune tâche pour le moment. Ajoutez-en ou passez cette étape !',
+          skip: 'Passer',
         },
       },
     },
@@ -774,6 +828,33 @@ export const translations: Record<Language, Translations> = {
         fairSpot: {
           label: 'Fair spot',
           description: 'Automatically find a location equidistant for all participants.',
+        },
+      },
+      wizard: {
+        steps: {
+          nameAndVibe: 'Name & Vibe',
+          dateAndLocation: 'When & Where',
+          helpersWanted: 'Helpers',
+        },
+        vibeLabel: "What's the vibe?",
+        vibePlaceholder: 'Casual outdoor gathering, formal dinner party, adventure trip...',
+        dateTitle: 'When?',
+        locationTitle: 'Where?',
+        decideLater: 'Decide later',
+        decideLaterDateHint: "You'll decide dates with your group later",
+        decideLaterLocationHint: "You'll figure out the spot together",
+        continue: 'Continue',
+        back: 'Back',
+        createEvent: 'Create Event',
+        helpers: {
+          title: 'Need some help?',
+          subtitle: 'Add quick tasks friends can volunteer for',
+          taskPlaceholder: 'e.g., Bring drinks, Setup playlist...',
+          quickAdd: 'Quick add:',
+          suggestions: ['Bring drinks', 'Setup music', 'Decorations', 'Pick up cake'],
+          addedTasks: 'Tasks',
+          noTasksHint: 'No tasks yet. Add some or skip this step!',
+          skip: 'Skip',
         },
       },
     },
