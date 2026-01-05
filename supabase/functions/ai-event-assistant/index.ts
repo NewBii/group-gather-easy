@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { checkRateLimit, getRateLimitHeaders, type RateLimitConfig } from '../_shared/rate-limiter.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +12,57 @@ interface Message {
   content: string;
 }
 
+// Input validation constants
+const MAX_SPARK_PROMPT_LENGTH = 500;
+const MAX_PREFERENCES_LENGTH = 10000; // JSON stringified
+
+// Rate limit: 10 requests per hour per user
+const AI_RATE_LIMIT_CONFIG: RateLimitConfig = {
+  windowMs: 60 * 60 * 1000, // 1 hour
+  maxRequests: 10,
+};
+
+// Sanitize user input - remove control characters and trim
+const sanitizeInput = (input: string): string => {
+  if (typeof input !== 'string') return '';
+  // Remove control characters except newlines and tabs
+  return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
+};
+
+// Validate sparkPrompt
+const validateSparkPrompt = (sparkPrompt: unknown): { valid: boolean; error?: string; sanitized?: string } => {
+  if (typeof sparkPrompt !== 'string') {
+    return { valid: false, error: 'sparkPrompt must be a string' };
+  }
+  if (sparkPrompt.length === 0) {
+    return { valid: false, error: 'sparkPrompt cannot be empty' };
+  }
+  if (sparkPrompt.length > MAX_SPARK_PROMPT_LENGTH) {
+    return { valid: false, error: `sparkPrompt must be ${MAX_SPARK_PROMPT_LENGTH} characters or less` };
+  }
+  return { valid: true, sanitized: sanitizeInput(sparkPrompt) };
+};
+
+// Validate participantPreferences
+const validatePreferences = (prefs: unknown): { valid: boolean; error?: string } => {
+  if (prefs === undefined || prefs === null) {
+    return { valid: true };
+  }
+  try {
+    const jsonStr = JSON.stringify(prefs);
+    if (jsonStr.length > MAX_PREFERENCES_LENGTH) {
+      return { valid: false, error: 'participantPreferences too large' };
+    }
+    // Ensure it's an array if present
+    if (!Array.isArray(prefs)) {
+      return { valid: false, error: 'participantPreferences must be an array' };
+    }
+    return { valid: true };
+  } catch {
+    return { valid: false, error: 'Invalid participantPreferences format' };
+  }
+};
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -17,14 +70,128 @@ serve(async (req) => {
   }
 
   try {
+    // === AUTHENTICATION CHECK ===
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('Missing Authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      console.error('Authentication failed:', authError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Authenticated user: ${user.id}`);
+
+    // === RATE LIMITING ===
+    const rateLimitResult = checkRateLimit(`ai-assistant:${user.id}`, AI_RATE_LIMIT_CONFIG);
+    const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
+    
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for user: ${user.id}`);
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+        { 
+          status: 429, 
+          headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // === INPUT VALIDATION ===
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       console.error('LOVABLE_API_KEY is not configured');
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const { action, sparkPrompt, eventId, participantPreferences } = await req.json();
-    console.log(`AI Event Assistant - Action: ${action}, EventId: ${eventId}`);
+    const body = await req.json();
+    const { action, sparkPrompt, eventId, participantPreferences } = body;
+
+    // Validate action
+    const validActions = ['generate-draft', 'generate-scenarios', 'synthesize-winner'];
+    if (!validActions.includes(action)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid action' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`AI Event Assistant - Action: ${action}, EventId: ${eventId}, User: ${user.id}`);
+
+    // Validate sparkPrompt for actions that require it
+    let sanitizedSparkPrompt: string | undefined;
+    if (action === 'generate-draft' || action === 'generate-scenarios') {
+      const promptValidation = validateSparkPrompt(sparkPrompt);
+      if (!promptValidation.valid) {
+        return new Response(
+          JSON.stringify({ error: promptValidation.error }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      sanitizedSparkPrompt = promptValidation.sanitized;
+    }
+
+    // Validate participantPreferences for synthesize-winner
+    if (action === 'synthesize-winner') {
+      const prefsValidation = validatePreferences(participantPreferences);
+      if (!prefsValidation.valid) {
+        return new Response(
+          JSON.stringify({ error: prefsValidation.error }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Validate eventId if provided
+    if (eventId) {
+      // Check if user is the creator or a participant of the event
+      const { data: event, error: eventError } = await supabaseClient
+        .from('events')
+        .select('id, created_by')
+        .eq('id', eventId)
+        .single();
+
+      if (eventError || !event) {
+        return new Response(
+          JSON.stringify({ error: 'Event not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check if user is creator or participant
+      const isCreator = event.created_by === user.id;
+      if (!isCreator) {
+        const { data: participant } = await supabaseClient
+          .from('participants')
+          .select('id')
+          .eq('event_id', eventId)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!participant) {
+          return new Response(
+            JSON.stringify({ error: 'You are not authorized to access this event' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
 
     let messages: Message[] = [];
     let tools: any[] | undefined;
@@ -42,7 +209,7 @@ When suggesting dates, always suggest dates in the future (at least a few days f
         },
         {
           role: 'user',
-          content: `Parse this event idea and create a structured draft: "${sparkPrompt}"`
+          content: `Parse this event idea and create a structured draft: "${sanitizedSparkPrompt}"`
         }
       ];
 
@@ -97,7 +264,7 @@ Guidelines for great scenarios:
         },
         {
           role: 'user',
-          content: `Based on this event idea: "${sparkPrompt}", create 3 distinct scenarios for the group to choose from.`
+          content: `Based on this event idea: "${sanitizedSparkPrompt}", create 3 distinct scenarios for the group to choose from.`
         }
       ];
 
@@ -210,12 +377,6 @@ Consider:
         }
       }];
       tool_choice = { type: 'function', function: { name: 'determine_winner' } };
-
-    } else {
-      return new Response(
-        JSON.stringify({ error: 'Invalid action' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
 
     console.log('Calling Lovable AI Gateway...');
@@ -240,13 +401,13 @@ Consider:
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 429, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
       if (response.status === 402) {
         return new Response(
           JSON.stringify({ error: 'AI credits exhausted. Please add more credits.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 402, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
@@ -268,7 +429,7 @@ Consider:
 
     return new Response(
       JSON.stringify({ success: true, data: result }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
