@@ -727,6 +727,16 @@ export type Database = {
         Args: { p_event_id: string; p_user_id: string }
         Returns: boolean
       }
+      join_event_as_participant: {
+        Args: { p_email?: string; p_event_id: string; p_name: string }
+        Returns: {
+          email: string
+          id: string
+          is_organizer: boolean
+          name: string
+          user_id: string
+        }[]
+      }
       owns_participant: { Args: { p_participant_id: string }; Returns: boolean }
     }
     Enums: {
