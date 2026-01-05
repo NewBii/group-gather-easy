@@ -114,6 +114,7 @@ interface Translations {
     createAccountDescription: string;
     createAccountButton: string;
     continueAsGuest: string;
+    viewEvent: string;
     accountLinked: string;
     shareTitle: string;
     shareDescription: string;
@@ -468,6 +469,7 @@ export const translations: Record<Language, Translations> = {
       createAccountDescription: 'Créez un compte pour modifier, suivre les réponses et recevoir des notifications.',
       createAccountButton: 'Créer un compte',
       continueAsGuest: 'Continuer sans compte',
+      viewEvent: 'Voir l\'événement',
       accountLinked: 'Événement lié à votre compte !',
       shareTitle: 'Partager cet événement',
       shareDescription: 'Toute personne avec ce lien peut voir et participer. Vous pouvez toujours revenir à cet événement avec le même lien.',
@@ -905,6 +907,7 @@ export const translations: Record<Language, Translations> = {
       createAccountDescription: 'Create an account to edit, track responses, and receive notifications.',
       createAccountButton: 'Create an account',
       continueAsGuest: 'Continue without account',
+      viewEvent: 'View event',
       accountLinked: 'Event linked to your account!',
       shareTitle: 'Share this event',
       shareDescription: 'Anyone with this link can view and participate. You can always return to this event with the same link.',

@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { Check, Copy, User, ArrowRight, Mail, Calendar } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface EventCreatedPromptProps {
   eventSlug: string;
@@ -15,7 +16,19 @@ export const EventCreatedPrompt = ({ eventSlug, eventId, eventTitle = 'Event' }:
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setIsAuthenticated(!!session?.user);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session?.user);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
   const eventUrl = `${window.location.origin}/event/${eventSlug}`;
 
   const handleCopyLink = async () => {
@@ -98,22 +111,24 @@ export const EventCreatedPrompt = ({ eventSlug, eventId, eventTitle = 'Event' }:
         </div>
       </div>
 
-      <div className="bg-secondary/50 border border-border rounded-lg p-6 space-y-4">
-        <div className="flex items-center justify-center gap-2 text-foreground">
-          <User className="h-5 w-5" />
-          <h2 className="font-semibold">{t.eventCreated.createAccountTitle}</h2>
+      {!isAuthenticated && (
+        <div className="bg-secondary/50 border border-border rounded-lg p-6 space-y-4">
+          <div className="flex items-center justify-center gap-2 text-foreground">
+            <User className="h-5 w-5" />
+            <h2 className="font-semibold">{t.eventCreated.createAccountTitle}</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {t.eventCreated.createAccountDescription}
+          </p>
+          <Button onClick={handleCreateAccount} className="w-full">
+            {t.eventCreated.createAccountButton}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {t.eventCreated.createAccountDescription}
-        </p>
-        <Button onClick={handleCreateAccount} className="w-full">
-          {t.eventCreated.createAccountButton}
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
+      )}
 
-      <Button variant="ghost" onClick={handleContinueAsGuest} className="text-muted-foreground">
-        {t.eventCreated.continueAsGuest}
+      <Button variant="default" onClick={handleContinueAsGuest}>
+        {isAuthenticated ? t.eventCreated.viewEvent : t.eventCreated.continueAsGuest}
       </Button>
     </div>
   );
