@@ -13,9 +13,14 @@ import { ProgressIndicator } from '@/components/create-event/ProgressIndicator';
 import { Step1NameAndVibe } from '@/components/create-event/Step1NameAndVibe';
 import { Step2DateAndLocation } from '@/components/create-event/Step2DateAndLocation';
 import { Step3HelpersWanted } from '@/components/create-event/Step3HelpersWanted';
+import { ModeSelector } from '@/components/create-event/ModeSelector';
+import { SparkPhase } from '@/components/create-event/SparkPhase';
+import { WaitingRoom } from '@/components/create-event/WaitingRoom';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { toast } from 'sonner';
+
+type OrganizationMode = 'manual' | 'ai_concierge';
 
 interface DatePeriod {
   id: string;
@@ -42,7 +47,13 @@ const CreateEvent = () => {
   // Auth state
   const [user, setUser] = useState<User | null>(null);
 
-  // Wizard state
+  // Mode selection state
+  const [selectedMode, setSelectedMode] = useState<OrganizationMode | null>(null);
+
+  // AI Concierge state
+  const [aiEventCreated, setAiEventCreated] = useState<{ id: string; slug: string; title?: string } | null>(null);
+
+  // Manual wizard state
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdEvent, setCreatedEvent] = useState<{ id: string; slug: string } | null>(null);
@@ -130,7 +141,12 @@ const CreateEvent = () => {
   };
 
   const handleBack = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
+    if (currentStep === 1) {
+      // Go back to mode selection
+      setSelectedMode(null);
+    } else {
+      setCurrentStep((prev) => Math.max(prev - 1, 1));
+    }
   };
 
   const handleSubmit = async () => {
@@ -179,6 +195,7 @@ const CreateEvent = () => {
           unique_slug: slug,
           status: 'active',
           created_by: user?.id ?? null,
+          organization_mode: 'manual',
         })
         .select()
         .single();
@@ -235,7 +252,18 @@ const CreateEvent = () => {
     }
   };
 
-  // Show success prompt if event was created
+  const handleAIEventCreated = async (eventId: string, slug: string) => {
+    // Fetch the event title
+    const { data } = await supabase
+      .from('events')
+      .select('title')
+      .eq('id', eventId)
+      .single();
+
+    setAiEventCreated({ id: eventId, slug, title: data?.title });
+  };
+
+  // Show success prompt if manual event was created
   if (createdEvent) {
     return (
       <div className="container py-12 md:py-16">
@@ -248,6 +276,78 @@ const CreateEvent = () => {
     );
   }
 
+  // Show waiting room if AI event was created
+  if (aiEventCreated) {
+    return (
+      <div className="container py-12 md:py-16">
+        <div className="max-w-2xl mx-auto">
+          <WaitingRoom
+            eventId={aiEventCreated.id}
+            eventSlug={aiEventCreated.slug}
+            eventTitle={aiEventCreated.title}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Mode Selection
+  if (!selectedMode) {
+    return (
+      <div className="container py-8 md:py-12">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-card rounded-3xl border border-border/50 shadow-sm p-6 md:p-10">
+            <ModeSelector
+              selectedMode={selectedMode}
+              onSelectMode={(mode) => setSelectedMode(mode)}
+            />
+            
+            {/* Continue button */}
+            <div className="mt-8 flex justify-end">
+              <Button
+                onClick={() => selectedMode && setSelectedMode(selectedMode)}
+                disabled={!selectedMode}
+                className="px-6"
+              >
+                {t.createEvent.wizard.continue}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // AI Concierge Mode - Spark Phase
+  if (selectedMode === 'ai_concierge') {
+    return (
+      <div className="container py-8 md:py-12">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-card rounded-3xl border border-border/50 shadow-sm p-6 md:p-10">
+            <SparkPhase
+              onEventCreated={handleAIEventCreated}
+              userId={user?.id}
+            />
+            
+            {/* Back button */}
+            <div className="mt-6 flex justify-start">
+              <Button
+                variant="ghost"
+                onClick={() => setSelectedMode(null)}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {t.createEvent.wizard.back}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Manual Mode - 3-step wizard
   return (
     <div className="container py-8 md:py-12">
       <div className="max-w-2xl mx-auto">
@@ -281,19 +381,15 @@ const CreateEvent = () => {
 
               {/* Navigation Buttons */}
               <div className="flex items-center justify-between mt-10 pt-6 border-t border-border/50">
-                {currentStep > 1 ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={handleBack}
-                    className="gap-2"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    {t.createEvent.wizard.back}
-                  </Button>
-                ) : (
-                  <div />
-                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleBack}
+                  className="gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {t.createEvent.wizard.back}
+                </Button>
 
                 {currentStep < 3 ? (
                   <Button

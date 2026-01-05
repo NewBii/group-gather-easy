@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -11,10 +12,30 @@ import { ActivitySection } from '@/components/event/ActivitySection';
 import { LocationSection } from '@/components/event/LocationSection';
 import { ParticipantsList } from '@/components/event/ParticipantsList';
 import { VoteResults } from '@/components/event/VoteResults';
+import { AIProgressStepper } from '@/components/create-event/AIProgressStepper';
+import { PulseVoting } from '@/components/event/PulseVoting';
+import { LockdownView } from '@/components/event/LockdownView';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface AIScenario {
+  id: string;
+  scenario_label: string;
+  title: string;
+  description?: string;
+  suggested_date?: string;
+  suggested_time_of_day?: string;
+  suggested_vibe?: string;
+}
 
 const Event = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useLanguage();
+  const { toast } = useToast();
+
+  const [scenarios, setScenarios] = useState<AIScenario[]>([]);
+  const [winningScenario, setWinningScenario] = useState<AIScenario | null>(null);
+  const [user, setUser] = useState<{ id: string } | null>(null);
 
   const {
     event,
@@ -27,6 +48,7 @@ const Event = () => {
     locationVotes,
     loading,
     error,
+    refetch,
   } = useEventData(id);
 
   const {
@@ -36,7 +58,86 @@ const Event = () => {
     updateLocation,
   } = useParticipant(event?.id);
 
-  // Loading state
+  // Cast event to access new fields not yet in types
+  const eventData = event as any;
+  const organizationMode = eventData?.organization_mode as string | undefined;
+  const aiPhase = (eventData?.ai_phase as 'spark' | 'pulse' | 'lockdown') || 'pulse';
+
+  // Get current user
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ? { id: session.user.id } : null);
+    });
+  }, []);
+
+  // Fetch AI scenarios for AI Concierge events
+  useEffect(() => {
+    if (!event?.id || organizationMode !== 'ai_concierge') return;
+
+    const fetchScenarios = async () => {
+      const { data } = await supabase
+        .from('ai_scenarios')
+        .select('*')
+        .eq('event_id', event.id)
+        .order('scenario_label');
+
+      if (data) {
+        setScenarios(data as AIScenario[]);
+        if (aiPhase === 'lockdown' && data.length > 0) {
+          setWinningScenario(data[0] as AIScenario);
+        }
+      }
+    };
+
+    fetchScenarios();
+  }, [event?.id, organizationMode, aiPhase]);
+
+  const isOrganizer = user?.id && eventData?.created_by === user.id;
+
+  const handleFinalize = async () => {
+    if (!event?.id) return;
+
+    try {
+      const { data: votes } = await supabase
+        .from('scenario_votes')
+        .select('*')
+        .eq('event_id', event.id);
+
+      if (!votes || votes.length === 0) {
+        toast({ title: 'No votes yet', variant: 'destructive' });
+        return;
+      }
+
+      // Calculate winner
+      const scoreMap = new Map<string, number>();
+      scenarios.forEach(s => scoreMap.set(s.id, 0));
+      votes.forEach((vote: any) => {
+        const current = scoreMap.get(vote.scenario_id) || 0;
+        if (vote.is_dealbreaker) {
+          scoreMap.set(vote.scenario_id, current - 5);
+        } else if (vote.rank) {
+          scoreMap.set(vote.scenario_id, current + (vote.rank === 1 ? 3 : vote.rank === 2 ? 2 : 1));
+        }
+      });
+
+      let winnerId = scenarios[0]?.id;
+      let maxScore = -Infinity;
+      scoreMap.forEach((score, id) => {
+        if (score > maxScore) { maxScore = score; winnerId = id; }
+      });
+
+      const winner = scenarios.find(s => s.id === winnerId);
+
+      await supabase.from('events').update({ ai_phase: 'lockdown', final_date: winner?.suggested_date || null }).eq('id', event.id);
+      setWinningScenario(winner || null);
+      toast({ title: t.aiConcierge.lockdown.title });
+      refetch();
+    } catch (err) {
+      console.error('Error finalizing:', err);
+      toast({ title: 'Error', variant: 'destructive' });
+    }
+  };
+
   if (loading || participantLoading) {
     return (
       <div className="container py-16 md:py-24">
@@ -48,102 +149,68 @@ const Event = () => {
     );
   }
 
-  // Error state / Not found
   if (error || !event) {
     return (
       <div className="container py-16 md:py-24">
         <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">
-            {t.eventPage.notFound}
-          </h1>
-          <p className="text-muted-foreground mb-8">
-            {t.eventPage.notFoundDescription}
-          </p>
+          <h1 className="text-2xl font-bold text-foreground mb-4">{t.eventPage.notFound}</h1>
+          <p className="text-muted-foreground mb-8">{t.eventPage.notFoundDescription}</p>
           <Button asChild variant="outline">
-            <Link to="/">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {t.event.backHome}
-            </Link>
+            <Link to="/"><ArrowLeft className="h-4 w-4 mr-2" />{t.event.backHome}</Link>
           </Button>
         </div>
       </div>
     );
   }
 
+  // AI Concierge Mode
+  if (organizationMode === 'ai_concierge') {
+    return (
+      <div className="container py-8 md:py-12">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/"><ArrowLeft className="h-4 w-4 mr-2" />{t.event.backHome}</Link>
+          </Button>
+          <EventHeader event={event} />
+
+          {aiPhase === 'lockdown' && winningScenario ? (
+            <LockdownView eventId={event.id} eventTitle={event.title} winningScenario={winningScenario} participantId={currentParticipant?.id} participantName={currentParticipant?.name} />
+          ) : (
+            <>
+              <AIProgressStepper currentPhase="pulse" />
+              <ParticipantJoinForm eventSlug={event.unique_slug} onJoin={joinEvent} currentParticipant={currentParticipant} />
+              {scenarios.length > 0 && (
+                <PulseVoting eventId={event.id} scenarios={scenarios} participantId={currentParticipant?.id} totalParticipants={participants.length} isOrganizer={isOrganizer} onFinalize={handleFinalize} />
+              )}
+              <div className="lg:hidden">
+                <ParticipantsList participants={participants} currentParticipantId={currentParticipant?.id} />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Manual Mode
   return (
     <div className="container py-8 md:py-12">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Back button */}
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t.event.backHome}
-          </Link>
+          <Link to="/"><ArrowLeft className="h-4 w-4 mr-2" />{t.event.backHome}</Link>
         </Button>
-
-        {/* Event header */}
         <EventHeader event={event} />
-
-        {/* Vote results summary */}
-        <VoteResults
-          dateOptions={dateOptions}
-          dateVotes={dateVotes}
-          activities={activities}
-          activityVotes={activityVotes}
-          locationSuggestions={locationSuggestions}
-          locationVotes={locationVotes}
-        />
-
-        {/* Join form or welcome back */}
-        <ParticipantJoinForm
-          eventSlug={event.unique_slug}
-          onJoin={joinEvent}
-          currentParticipant={currentParticipant}
-        />
-
-        {/* Main content grid */}
+        <VoteResults dateOptions={dateOptions} dateVotes={dateVotes} activities={activities} activityVotes={activityVotes} locationSuggestions={locationSuggestions} locationVotes={locationVotes} />
+        <ParticipantJoinForm eventSlug={event.unique_slug} onJoin={joinEvent} currentParticipant={currentParticipant} />
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left column: Voting sections */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Date voting */}
-            {dateOptions.length > 0 && (
-              <DateVoting
-                dateOptions={dateOptions}
-                dateVotes={dateVotes}
-                participantId={currentParticipant?.id}
-                participantsCount={participants.length}
-              />
-            )}
-
-            {/* Activity section */}
-            <ActivitySection
-              eventId={event.id}
-              activities={activities}
-              activityVotes={activityVotes}
-              participantId={currentParticipant?.id}
-              participantsCount={participants.length}
-            />
-
-            {/* Location section */}
-            {event.location_type && (
-              <LocationSection
-                event={event}
-                locationSuggestions={locationSuggestions}
-                locationVotes={locationVotes}
-                participants={participants}
-                participantId={currentParticipant?.id}
-                onUpdateLocation={updateLocation}
-              />
-            )}
+            {dateOptions.length > 0 && <DateVoting dateOptions={dateOptions} dateVotes={dateVotes} participantId={currentParticipant?.id} participantsCount={participants.length} />}
+            <ActivitySection eventId={event.id} activities={activities} activityVotes={activityVotes} participantId={currentParticipant?.id} participantsCount={participants.length} />
+            {event.location_type && <LocationSection event={event} locationSuggestions={locationSuggestions} locationVotes={locationVotes} participants={participants} participantId={currentParticipant?.id} onUpdateLocation={updateLocation} />}
           </div>
-
-          {/* Right column: Participants */}
           <div className="lg:col-span-1">
             <div className="sticky top-24">
-              <ParticipantsList
-                participants={participants}
-                currentParticipantId={currentParticipant?.id}
-              />
+              <ParticipantsList participants={participants} currentParticipantId={currentParticipant?.id} />
             </div>
           </div>
         </div>
