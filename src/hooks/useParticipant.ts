@@ -161,26 +161,61 @@ export const useParticipant = (eventId: string | undefined) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { data: participant, error } = await supabase
-        .from('participants')
-        .insert({
-          event_id: eventId,
-          name: name.trim(),
-          email: email?.trim() || null,
-          user_id: user?.id || null,
-          is_organizer: false,
-        })
-        .select('id, name, email, user_id, is_organizer')
-        .single();
+      if (user) {
+        // Authenticated user: can use insert().select() with updated RLS policy
+        const { data: participant, error } = await supabase
+          .from('participants')
+          .insert({
+            event_id: eventId,
+            name: name.trim(),
+            email: email?.trim() || null,
+            user_id: user.id,
+            is_organizer: false,
+          })
+          .select('id, name, email, user_id, is_organizer')
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (participant) {
-        setCurrentParticipant(participant);
-        storeParticipantSession(eventId, participant.id);
+        if (participant) {
+          setCurrentParticipant(participant);
+          storeParticipantSession(eventId, participant.id);
+        }
+
+        return participant;
+      } else {
+        // Anonymous user: insert without select, then fetch separately
+        const { error: insertError } = await supabase
+          .from('participants')
+          .insert({
+            event_id: eventId,
+            name: name.trim(),
+            email: email?.trim() || null,
+            user_id: null,
+            is_organizer: false,
+          });
+
+        if (insertError) throw insertError;
+
+        // Fetch the participant we just created (works for anonymous events)
+        const { data: participant, error: selectError } = await supabase
+          .from('participants')
+          .select('id, name, email, user_id, is_organizer')
+          .eq('event_id', eventId)
+          .eq('name', name.trim())
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (selectError) throw selectError;
+
+        if (participant) {
+          setCurrentParticipant(participant);
+          storeParticipantSession(eventId, participant.id);
+        }
+
+        return participant;
       }
-
-      return participant;
     } catch (err) {
       console.error('Error joining event:', err);
       throw err;
