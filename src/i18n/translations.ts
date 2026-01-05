@@ -1,5 +1,49 @@
 export type Language = 'fr' | 'en';
 
+interface AIConciergeTranslations {
+  modeSelector: {
+    title: string;
+    manual: { title: string; description: string; };
+    ai: { title: string; description: string; recommended: string; };
+  };
+  spark: {
+    title: string;
+    placeholder: string;
+    examples: string[];
+    generate: string;
+    generating: string;
+    quickAdd: string;
+    waitingRoom: {
+      title: string;
+      subtitle: string;
+      shareLink: string;
+      peopleJoined: string;
+    };
+  };
+  pulse: {
+    title: string;
+    subtitle: string;
+    rankLabel: string;
+    dealbreaker: string;
+    momentum: {
+      title: string;
+      progress: string;
+      frontrunner: string;
+    };
+    finalize: string;
+  };
+  lockdown: {
+    badge: string;
+    title: string;
+    theVerdict: string;
+    addToCalendar: string;
+    taskSplitter: {
+      title: string;
+      claimTask: string;
+    };
+  };
+}
+
 interface Translations {
   nav: {
     home: string;
@@ -329,6 +373,7 @@ interface Translations {
       topLocation: string;
     };
   };
+  aiConcierge: AIConciergeTranslations;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -769,6 +814,49 @@ export const translations: Record<Language, Translations> = {
         topLocation: 'Lieu préféré',
       },
     },
+    aiConcierge: {
+      modeSelector: {
+        title: 'Comment voulez-vous planifier ?',
+        manual: { title: 'Organisateur direct', description: 'Je sais ce que je veux - je configure les options moi-même' },
+        ai: { title: 'Concierge IA', description: 'Aidez-moi à décider - décrivez votre idée et laissez tout le monde la façonner', recommended: 'Recommandé' },
+      },
+      spark: {
+        title: "C'est quoi l'ambiance ?",
+        placeholder: 'Ex: Un dîner d\'anniversaire décontracté la semaine prochaine ou un road trip estival entre amis',
+        examples: ['Dîner anniversaire', 'Weekend entre amis', 'Soirée jeux', 'Déjeuner équipe'],
+        generate: 'Lancer l\'idée ✨',
+        generating: 'Création de votre événement...',
+        quickAdd: 'Idées rapides :',
+        waitingRoom: {
+          title: 'Idée lancée !',
+          subtitle: 'Envoyez ce lien à votre groupe. Je vous aiderai à décider du reste.',
+          shareLink: 'Partagez ce lien',
+          peopleJoined: '{count} personnes ont rejoint',
+        },
+      },
+      pulse: {
+        title: 'Choisissez votre préférence',
+        subtitle: 'Classez ces options et marquez les impossibilités',
+        rankLabel: 'Votre classement',
+        dealbreaker: 'Ça ne marche pas pour moi',
+        momentum: {
+          title: 'Dynamique du groupe',
+          progress: '{count}/{total} ont voté',
+          frontrunner: '{option} est en tête !',
+        },
+        finalize: 'Finaliser l\'événement',
+      },
+      lockdown: {
+        badge: 'Confirmé',
+        title: 'C\'est officiel !',
+        theVerdict: 'Le verdict',
+        addToCalendar: 'Ajouter au calendrier',
+        taskSplitter: {
+          title: 'Qui apporte quoi ?',
+          claimTask: 'Je m\'en charge',
+        },
+      },
+    },
   },
   en: {
     nav: {
@@ -1205,6 +1293,49 @@ export const translations: Record<Language, Translations> = {
         topDate: 'Top date',
         topActivity: 'Top activity',
         topLocation: 'Top location',
+      },
+    },
+    aiConcierge: {
+      modeSelector: {
+        title: 'How would you like to plan?',
+        manual: { title: 'Direct Organizer', description: 'I know what I want - set up voting options myself' },
+        ai: { title: 'AI Concierge', description: 'Help me decide - describe your idea and let everyone shape it', recommended: 'Recommended' },
+      },
+      spark: {
+        title: "What's the vibe?",
+        placeholder: 'e.g., A casual birthday dinner next week or a summer road trip with friends',
+        examples: ['Birthday dinner', 'Weekend trip', 'Game night', 'Team lunch'],
+        generate: 'Spark the Idea ✨',
+        generating: 'Creating your event...',
+        quickAdd: 'Quick ideas:',
+        waitingRoom: {
+          title: 'Idea Sparked!',
+          subtitle: "Send this link to your group. I'll help everyone decide the rest.",
+          shareLink: 'Share this link',
+          peopleJoined: '{count} people have joined',
+        },
+      },
+      pulse: {
+        title: 'Choose Your Preference',
+        subtitle: 'Rank these options and mark any dealbreakers',
+        rankLabel: 'Your ranking',
+        dealbreaker: "This doesn't work for me",
+        momentum: {
+          title: 'Group Momentum',
+          progress: '{count}/{total} have voted',
+          frontrunner: '{option} is the frontrunner!',
+        },
+        finalize: 'Finalize Event',
+      },
+      lockdown: {
+        badge: 'Confirmed',
+        title: "It's Official!",
+        theVerdict: 'The Verdict',
+        addToCalendar: 'Add to Calendar',
+        taskSplitter: {
+          title: "Who's bringing what?",
+          claimTask: "I'll do this",
+        },
       },
     },
   },

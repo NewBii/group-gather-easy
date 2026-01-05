@@ -95,6 +95,53 @@ export type Database = {
           },
         ]
       }
+      ai_scenarios: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          event_id: string
+          id: string
+          metadata: Json | null
+          scenario_label: string
+          suggested_date: string | null
+          suggested_time_of_day: string | null
+          suggested_vibe: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          event_id: string
+          id?: string
+          metadata?: Json | null
+          scenario_label: string
+          suggested_date?: string | null
+          suggested_time_of_day?: string | null
+          suggested_vibe?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          event_id?: string
+          id?: string
+          metadata?: Json | null
+          scenario_label?: string
+          suggested_date?: string | null
+          suggested_time_of_day?: string | null
+          suggested_vibe?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_scenarios_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       date_options: {
         Row: {
           created_at: string
@@ -219,6 +266,7 @@ export type Database = {
       }
       events: {
         Row: {
+          ai_phase: string | null
           created_at: string
           created_by: string | null
           date_range_end: string | null
@@ -230,12 +278,15 @@ export type Database = {
           id: string
           location_data: Json | null
           location_type: Database["public"]["Enums"]["location_type"] | null
+          organization_mode: string | null
+          spark_prompt: string | null
           status: Database["public"]["Enums"]["event_status"]
           title: string
           unique_slug: string
           updated_at: string
         }
         Insert: {
+          ai_phase?: string | null
           created_at?: string
           created_by?: string | null
           date_range_end?: string | null
@@ -247,12 +298,15 @@ export type Database = {
           id?: string
           location_data?: Json | null
           location_type?: Database["public"]["Enums"]["location_type"] | null
+          organization_mode?: string | null
+          spark_prompt?: string | null
           status?: Database["public"]["Enums"]["event_status"]
           title: string
           unique_slug: string
           updated_at?: string
         }
         Update: {
+          ai_phase?: string | null
           created_at?: string
           created_by?: string | null
           date_range_end?: string | null
@@ -264,6 +318,8 @@ export type Database = {
           id?: string
           location_data?: Json | null
           location_type?: Database["public"]["Enums"]["location_type"] | null
+          organization_mode?: string | null
+          spark_prompt?: string | null
           status?: Database["public"]["Enums"]["event_status"]
           title?: string
           unique_slug?: string
@@ -578,6 +634,61 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      scenario_votes: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          id: string
+          is_dealbreaker: boolean | null
+          participant_id: string
+          rank: number | null
+          scenario_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          id?: string
+          is_dealbreaker?: boolean | null
+          participant_id: string
+          rank?: number | null
+          scenario_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          is_dealbreaker?: boolean | null
+          participant_id?: string
+          rank?: number | null
+          scenario_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_votes_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scenario_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scenario_votes_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "ai_scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
