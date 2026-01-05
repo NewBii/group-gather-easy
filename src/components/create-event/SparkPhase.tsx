@@ -29,12 +29,13 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
   const { toast } = useToast();
   const [sparkPrompt, setSparkPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState<string>('');
 
   const examples = [
-    t.aiConcierge?.spark?.examples?.[0] || 'Birthday dinner',
-    t.aiConcierge?.spark?.examples?.[1] || 'Weekend trip',
-    t.aiConcierge?.spark?.examples?.[2] || 'Game night',
-    t.aiConcierge?.spark?.examples?.[3] || 'Team lunch',
+    t.aiConcierge?.spark?.examples?.[0] || "Birthday dinner on Friday with the gang",
+    t.aiConcierge?.spark?.examples?.[1] || "Weekend trip somewhere in the mountains, with kids",
+    t.aiConcierge?.spark?.examples?.[2] || "Team lunch, people coming from Paris and Lyon",
+    t.aiConcierge?.spark?.examples?.[3] || "Let's do something fun!",
   ];
 
   const handleGenerate = async () => {
@@ -49,7 +50,23 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
     setIsGenerating(true);
 
     try {
-      // Call AI to generate event draft
+      // Step 1: Analyze context for constraints
+      setGenerationStep('Analyzing your idea...');
+      const { data: contextResponse, error: contextError } = await supabase.functions.invoke('ai-event-assistant', {
+        body: {
+          action: 'analyze-context',
+          sparkPrompt: sparkPrompt.trim(),
+        },
+      });
+
+      if (contextError) throw contextError;
+      if (!contextResponse?.success) throw new Error(contextResponse?.error || 'Context analysis failed');
+
+      const contextAnalysis = contextResponse.data;
+      console.log('Context analysis:', contextAnalysis);
+
+      // Step 2: Generate draft based on analysis
+      setGenerationStep('Creating your event...');
       const { data: aiResponse, error: aiError } = await supabase.functions.invoke('ai-event-assistant', {
         body: {
           action: 'generate-draft',
@@ -61,41 +78,52 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
       if (!aiResponse?.success) throw new Error(aiResponse?.error || 'AI generation failed');
 
       const draft = aiResponse.data;
-      const slug = generateSlug(draft.title);
+      const slug = generateSlug(contextAnalysis.eventTitle || draft.title);
 
-      // Create the event
+      // Create the event with context metadata
       const { data: event, error: eventError } = await supabase
         .from('events')
         .insert({
-          title: draft.title,
-          description: draft.description,
-          event_type: draft.eventType,
+          title: contextAnalysis.eventTitle || draft.title,
+          description: contextAnalysis.suggestedDescription || draft.description,
+          event_type: contextAnalysis.eventType || draft.eventType,
           organization_mode: 'ai_concierge',
           ai_phase: 'spark',
           spark_prompt: sparkPrompt.trim(),
           unique_slug: slug,
           status: 'active',
           created_by: userId ?? null,
+          // Store context analysis in location_data for now (we can add a proper column later)
+          location_data: {
+            contextAnalysis: {
+              constraints: contextAnalysis.constraints,
+              specialRequirements: contextAnalysis.specialRequirements,
+              participantOrigins: contextAnalysis.participantOrigins,
+              vibeKeywords: contextAnalysis.vibeKeywords,
+              isVague: contextAnalysis.isVague,
+            }
+          }
         })
         .select()
         .single();
 
       if (eventError) throw eventError;
 
-      // Generate scenarios for the Pulse phase
+      // Step 3: Generate context-aware scenarios
+      setGenerationStep('Crafting personalized options...');
       const { data: scenarioResponse, error: scenarioError } = await supabase.functions.invoke('ai-event-assistant', {
         body: {
           action: 'generate-scenarios',
           sparkPrompt: sparkPrompt.trim(),
           eventId: event.id,
+          contextAnalysis: contextAnalysis, // Pass context to scenario generation
         },
       });
 
       if (scenarioError) {
         console.error('Scenario generation error:', scenarioError);
-        // Continue anyway, scenarios can be generated later
       } else if (scenarioResponse?.success && scenarioResponse.data?.scenarios) {
-        // Save scenarios to database
+        // Save scenarios with metadata
         const scenarios = scenarioResponse.data.scenarios.map((s: any) => ({
           event_id: event.id,
           scenario_label: `Option ${s.label}`,
@@ -104,6 +132,11 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
           suggested_date: s.suggested_date,
           suggested_time_of_day: s.time_of_day,
           suggested_vibe: s.vibe,
+          metadata: {
+            constraints_applied: s.constraints_applied,
+            special_traits: s.special_traits,
+            midpoint_info: s.midpoint_info,
+          }
         }));
 
         const { error: insertError } = await supabase
@@ -116,7 +149,9 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
       }
 
       toast({
-        title: t.aiConcierge?.spark?.waitingRoom?.title || 'Idea Sparked! ✨',
+        title: contextAnalysis.isVague 
+          ? "Here are some starter concepts! ✨" 
+          : t.aiConcierge?.spark?.waitingRoom?.title || 'Idea Sparked! ✨',
       });
 
       onEventCreated(event.id, event.unique_slug);
@@ -130,6 +165,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
       });
     } finally {
       setIsGenerating(false);
+      setGenerationStep('');
     }
   };
 
@@ -143,7 +179,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
           {t.aiConcierge?.spark?.title || "What's the vibe?"}
         </h2>
         <p className="text-muted-foreground max-w-md mx-auto">
-          Describe your event idea in a few words. The more context, the better!
+          Describe your event idea in a few words. Be specific about dates, locations, or who's coming - or keep it vague and let us help!
         </p>
       </div>
 
@@ -152,18 +188,18 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
           <Textarea
             value={sparkPrompt}
             onChange={(e) => setSparkPrompt(e.target.value)}
-            placeholder={t.aiConcierge?.spark?.placeholder || "e.g., A casual birthday dinner next week or a summer road trip with friends"}
+            placeholder="e.g., 'Birthday dinner on Friday downtown' or 'Weekend trip in May, people coming from Berlin and Munich, with kids'"
             className="min-h-[120px] text-lg border-none bg-transparent resize-none focus-visible:ring-0 placeholder:text-muted-foreground/60"
             disabled={isGenerating}
           />
         </CardContent>
       </Card>
 
-      {/* Quick examples */}
+      {/* Quick examples with context hints */}
       <div className="flex flex-wrap gap-2 justify-center">
         <span className="text-sm text-muted-foreground flex items-center gap-1">
           <Lightbulb className="w-4 h-4" />
-          {t.aiConcierge?.spark?.quickAdd || 'Quick ideas:'}
+          Try these:
         </span>
         {examples.map((example) => (
           <button
@@ -186,7 +222,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
         {isGenerating ? (
           <>
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            {t.aiConcierge?.spark?.generating || 'Creating your event...'}
+            {generationStep || t.aiConcierge?.spark?.generating || 'Creating your event...'}
           </>
         ) : (
           <>

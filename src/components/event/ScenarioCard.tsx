@@ -1,10 +1,28 @@
-import { Sun, Moon, Sunset, Coffee, Zap, Heart, Briefcase, Ban } from 'lucide-react';
+import { Sun, Moon, Sunset, Coffee, Zap, Heart, Briefcase, Ban, Lock, Vote } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { ConstraintBadge, SpecialTraitBadge, MidpointInfo } from './ConstraintBadge';
+
+interface SpecialTrait {
+  type: 'kid_friendly' | 'accessibility' | 'dietary' | 'budget' | 'midpoint' | 'nightlife' | 'outdoor' | 'indoor';
+  label: string;
+  description?: string;
+}
+
+interface ConstraintsApplied {
+  date_locked?: boolean;
+  location_locked?: boolean;
+  time_locked?: boolean;
+}
+
+interface MidpointInfoData {
+  suggested_location?: string;
+  travel_logic?: string;
+}
 
 interface ScenarioCardProps {
   scenario: {
@@ -15,6 +33,11 @@ interface ScenarioCardProps {
     suggested_date?: string;
     suggested_time_of_day?: string;
     suggested_vibe?: string;
+    metadata?: {
+      constraints_applied?: ConstraintsApplied;
+      special_traits?: SpecialTrait[];
+      midpoint_info?: MidpointInfoData;
+    } | null;
   };
   rank?: number;
   isDealbreaker?: boolean;
@@ -31,10 +54,10 @@ const timeIcons = {
 };
 
 const vibeIcons = {
-  casual: { icon: Coffee, label: 'Casual', color: 'bg-green-100 text-green-700' },
-  active: { icon: Zap, label: 'Active', color: 'bg-blue-100 text-blue-700' },
-  relaxed: { icon: Heart, label: 'Relaxed', color: 'bg-pink-100 text-pink-700' },
-  formal: { icon: Briefcase, label: 'Formal', color: 'bg-purple-100 text-purple-700' },
+  casual: { icon: Coffee, label: 'Casual', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+  active: { icon: Zap, label: 'Active', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  relaxed: { icon: Heart, label: 'Relaxed', color: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400' },
+  formal: { icon: Briefcase, label: 'Formal', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
 };
 
 export const ScenarioCard = ({
@@ -55,6 +78,20 @@ export const ScenarioCard = ({
   const formattedDate = scenario.suggested_date
     ? format(parseISO(scenario.suggested_date), language === 'fr' ? 'EEEE d MMMM' : 'EEEE, MMMM d')
     : null;
+
+  // Extract metadata for context-aware display
+  const metadata = scenario.metadata as {
+    constraints_applied?: ConstraintsApplied;
+    special_traits?: SpecialTrait[];
+    midpoint_info?: MidpointInfoData;
+  } | null;
+  
+  const constraintsApplied = metadata?.constraints_applied;
+  const specialTraits = metadata?.special_traits || [];
+  const midpointInfo = metadata?.midpoint_info;
+
+  const isDateLocked = constraintsApplied?.date_locked;
+  const isTimeLocked = constraintsApplied?.time_locked;
 
   return (
     <Card
@@ -95,14 +132,29 @@ export const ScenarioCard = ({
           <p className="text-sm text-muted-foreground">{scenario.description}</p>
         )}
 
+        {/* Date/Time/Vibe badges with lock indicators */}
         <div className="flex flex-wrap gap-2">
           {formattedDate && (
-            <Badge variant="secondary" className="capitalize">
+            <Badge 
+              variant={isDateLocked ? "default" : "secondary"} 
+              className={cn(
+                "capitalize gap-1",
+                isDateLocked && "bg-primary text-primary-foreground"
+              )}
+            >
+              {isDateLocked && <Lock className="h-3 w-3" />}
               📅 {formattedDate}
             </Badge>
           )}
           {TimeIcon && (
-            <Badge variant="secondary" className={timeIcons[time].color}>
+            <Badge 
+              variant={isTimeLocked ? "default" : "secondary"} 
+              className={cn(
+                timeIcons[time].color,
+                isTimeLocked && "bg-primary text-primary-foreground"
+              )}
+            >
+              {isTimeLocked && <Lock className="h-3 w-3 mr-1" />}
               {timeIcons[time].label}
             </Badge>
           )}
@@ -112,6 +164,28 @@ export const ScenarioCard = ({
             </Badge>
           )}
         </div>
+
+        {/* Special traits (kid-friendly, accessibility, etc.) */}
+        {specialTraits.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {specialTraits.map((trait, idx) => (
+              <SpecialTraitBadge
+                key={idx}
+                type={trait.type}
+                label={trait.label}
+                description={trait.description}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Midpoint info for multi-origin events */}
+        {midpointInfo?.suggested_location && (
+          <MidpointInfo
+            suggestedLocation={midpointInfo.suggested_location}
+            travelLogic={midpointInfo.travel_logic || ''}
+          />
+        )}
 
         {/* Ranking buttons */}
         {showRanking && isVotingEnabled && (
@@ -138,7 +212,7 @@ export const ScenarioCard = ({
               className="w-full text-sm"
             >
               <Ban className="mr-2 h-4 w-4" />
-              {isDealbreaker ? 'Remove dealbreaker' : "This doesn't work for me"}
+              {isDealbreaker ? 'Remove veto' : '🚫 Veto this option'}
             </Button>
           </div>
         )}

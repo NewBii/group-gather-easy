@@ -14,22 +14,19 @@ interface Message {
 
 // Input validation constants
 const MAX_SPARK_PROMPT_LENGTH = 500;
-const MAX_PREFERENCES_LENGTH = 10000; // JSON stringified
+const MAX_PREFERENCES_LENGTH = 10000;
 
 // Rate limit: 10 requests per hour per user
 const AI_RATE_LIMIT_CONFIG: RateLimitConfig = {
-  windowMs: 60 * 60 * 1000, // 1 hour
+  windowMs: 60 * 60 * 1000,
   maxRequests: 10,
 };
 
-// Sanitize user input - remove control characters and trim
 const sanitizeInput = (input: string): string => {
   if (typeof input !== 'string') return '';
-  // Remove control characters except newlines and tabs
   return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
 };
 
-// Validate sparkPrompt
 const validateSparkPrompt = (sparkPrompt: unknown): { valid: boolean; error?: string; sanitized?: string } => {
   if (typeof sparkPrompt !== 'string') {
     return { valid: false, error: 'sparkPrompt must be a string' };
@@ -43,7 +40,6 @@ const validateSparkPrompt = (sparkPrompt: unknown): { valid: boolean; error?: st
   return { valid: true, sanitized: sanitizeInput(sparkPrompt) };
 };
 
-// Validate participantPreferences
 const validatePreferences = (prefs: unknown): { valid: boolean; error?: string } => {
   if (prefs === undefined || prefs === null) {
     return { valid: true };
@@ -53,7 +49,6 @@ const validatePreferences = (prefs: unknown): { valid: boolean; error?: string }
     if (jsonStr.length > MAX_PREFERENCES_LENGTH) {
       return { valid: false, error: 'participantPreferences too large' };
     }
-    // Ensure it's an array if present
     if (!Array.isArray(prefs)) {
       return { valid: false, error: 'participantPreferences must be an array' };
     }
@@ -64,13 +59,11 @@ const validatePreferences = (prefs: unknown): { valid: boolean; error?: string }
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // === AUTHENTICATION CHECK ===
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error('Missing Authorization header');
@@ -98,7 +91,6 @@ serve(async (req) => {
 
     console.log(`Authenticated user: ${user.id}`);
 
-    // === RATE LIMITING ===
     const rateLimitResult = checkRateLimit(`ai-assistant:${user.id}`, AI_RATE_LIMIT_CONFIG);
     const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
     
@@ -106,14 +98,10 @@ serve(async (req) => {
       console.warn(`Rate limit exceeded for user: ${user.id}`);
       return new Response(
         JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-        { 
-          status: 429, 
-          headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } 
-        }
+        { status: 429, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // === INPUT VALIDATION ===
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       console.error('LOVABLE_API_KEY is not configured');
@@ -123,8 +111,7 @@ serve(async (req) => {
     const body = await req.json();
     const { action, sparkPrompt, eventId, participantPreferences } = body;
 
-    // Validate action
-    const validActions = ['generate-draft', 'generate-scenarios', 'synthesize-winner'];
+    const validActions = ['generate-draft', 'generate-scenarios', 'synthesize-winner', 'analyze-context'];
     if (!validActions.includes(action)) {
       return new Response(
         JSON.stringify({ error: 'Invalid action' }),
@@ -134,9 +121,8 @@ serve(async (req) => {
 
     console.log(`AI Event Assistant - Action: ${action}, EventId: ${eventId}, User: ${user.id}`);
 
-    // Validate sparkPrompt for actions that require it
     let sanitizedSparkPrompt: string | undefined;
-    if (action === 'generate-draft' || action === 'generate-scenarios') {
+    if (action === 'generate-draft' || action === 'generate-scenarios' || action === 'analyze-context') {
       const promptValidation = validateSparkPrompt(sparkPrompt);
       if (!promptValidation.valid) {
         return new Response(
@@ -147,7 +133,6 @@ serve(async (req) => {
       sanitizedSparkPrompt = promptValidation.sanitized;
     }
 
-    // Validate participantPreferences for synthesize-winner
     if (action === 'synthesize-winner') {
       const prefsValidation = validatePreferences(participantPreferences);
       if (!prefsValidation.valid) {
@@ -158,9 +143,7 @@ serve(async (req) => {
       }
     }
 
-    // Validate eventId if provided
     if (eventId) {
-      // Check if user is the creator or a participant of the event
       const { data: event, error: eventError } = await supabaseClient
         .from('events')
         .select('id, created_by')
@@ -174,7 +157,6 @@ serve(async (req) => {
         );
       }
 
-      // Check if user is creator or participant
       const isCreator = event.created_by === user.id;
       if (!isCreator) {
         const { data: participant } = await supabaseClient
@@ -197,8 +179,107 @@ serve(async (req) => {
     let tools: any[] | undefined;
     let tool_choice: any | undefined;
 
-    if (action === 'generate-draft') {
-      // Parse the spark prompt and generate event draft
+    if (action === 'analyze-context') {
+      // Semantic analysis of the spark prompt to identify constraints
+      messages = [
+        {
+          role: 'system',
+          content: `You are an expert at understanding natural language event descriptions. Your job is to identify:
+1. FIXED constraints (things explicitly decided, like "dinner on Friday" = date is locked)
+2. FLEXIBLE elements (things that need group input, like "a weekend in May" = date is a poll)
+3. MISSING info that needs to be decided
+4. Special requirements (kids, accessibility, dietary restrictions)
+5. Participant origins if mentioned (cities people are coming from)
+6. Vibe/atmosphere hints (party, formal, casual, adventure)
+
+Today's date is ${new Date().toISOString().split('T')[0]}.
+
+Analyze the prompt carefully. If someone says "dinner Friday" that's a FIXED date. If they say "sometime next month" that's FLEXIBLE.`
+        },
+        {
+          role: 'user',
+          content: `Analyze this event description for constraints: "${sanitizedSparkPrompt}"`
+        }
+      ];
+
+      tools = [{
+        type: 'function',
+        function: {
+          name: 'analyze_constraints',
+          description: 'Extract fixed and flexible constraints from the event description',
+          parameters: {
+            type: 'object',
+            properties: {
+              eventTitle: { type: 'string', description: 'A catchy title for the event' },
+              eventType: { type: 'string', enum: ['day_event', 'trip'] },
+              constraints: {
+                type: 'object',
+                properties: {
+                  date: {
+                    type: 'object',
+                    properties: {
+                      type: { type: 'string', enum: ['fixed', 'flexible', 'missing'] },
+                      value: { type: 'string', description: 'The date or date range if mentioned (YYYY-MM-DD format or description)' },
+                      displayLabel: { type: 'string', description: 'Human-readable label like "Friday, Oct 12" or "Vote: Weekend A or B"' }
+                    },
+                    required: ['type']
+                  },
+                  location: {
+                    type: 'object',
+                    properties: {
+                      type: { type: 'string', enum: ['fixed', 'flexible', 'missing'] },
+                      value: { type: 'string', description: 'The location if mentioned' },
+                      displayLabel: { type: 'string' }
+                    },
+                    required: ['type']
+                  },
+                  time: {
+                    type: 'object',
+                    properties: {
+                      type: { type: 'string', enum: ['fixed', 'flexible', 'missing'] },
+                      value: { type: 'string', enum: ['morning', 'afternoon', 'evening'] },
+                      displayLabel: { type: 'string' }
+                    },
+                    required: ['type']
+                  }
+                },
+                required: ['date', 'location', 'time']
+              },
+              specialRequirements: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    type: { type: 'string', enum: ['kids', 'accessibility', 'dietary', 'budget', 'other'] },
+                    label: { type: 'string' },
+                    description: { type: 'string' }
+                  }
+                }
+              },
+              participantOrigins: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Cities or locations participants are coming from if mentioned'
+              },
+              vibeKeywords: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Keywords describing the atmosphere (party, chill, adventure, romantic, etc.)'
+              },
+              isVague: {
+                type: 'boolean',
+                description: 'True if the prompt is extremely vague like "let us do something"'
+              },
+              suggestedDescription: { type: 'string', description: 'A brief event description' }
+            },
+            required: ['eventTitle', 'eventType', 'constraints', 'specialRequirements', 'participantOrigins', 'vibeKeywords', 'isVague', 'suggestedDescription'],
+            additionalProperties: false
+          }
+        }
+      }];
+      tool_choice = { type: 'function', function: { name: 'analyze_constraints' } };
+
+    } else if (action === 'generate-draft') {
       messages = [
         {
           role: 'system',
@@ -221,23 +302,10 @@ When suggesting dates, always suggest dates in the future (at least a few days f
           parameters: {
             type: 'object',
             properties: {
-              title: { 
-                type: 'string',
-                description: 'A catchy, concise title for the event (max 50 chars)'
-              },
-              description: { 
-                type: 'string',
-                description: 'A brief description of the event (1-2 sentences)'
-              },
-              eventType: { 
-                type: 'string',
-                enum: ['day_event', 'trip'],
-                description: 'Whether this is a single day event or a multi-day trip'
-              },
-              suggestedVibe: {
-                type: 'string',
-                description: 'The overall vibe/mood of the event'
-              }
+              title: { type: 'string', description: 'A catchy, concise title for the event (max 50 chars)' },
+              description: { type: 'string', description: 'A brief description of the event (1-2 sentences)' },
+              eventType: { type: 'string', enum: ['day_event', 'trip'] },
+              suggestedVibe: { type: 'string' }
             },
             required: ['title', 'description', 'eventType', 'suggestedVibe'],
             additionalProperties: false
@@ -247,7 +315,51 @@ When suggesting dates, always suggest dates in the future (at least a few days f
       tool_choice = { type: 'function', function: { name: 'create_event_draft' } };
 
     } else if (action === 'generate-scenarios') {
-      // Generate 3 concrete scenarios for voting
+      // Get context analysis if available from the request body
+      const contextAnalysis = body.contextAnalysis;
+      const hasKids = contextAnalysis?.specialRequirements?.some((r: any) => r.type === 'kids');
+      const participantOrigins = contextAnalysis?.participantOrigins || [];
+      const isVague = contextAnalysis?.isVague || false;
+      const constraints = contextAnalysis?.constraints || {};
+      const vibeKeywords = contextAnalysis?.vibeKeywords || [];
+      
+      let scenarioGuidelines = `Guidelines for great scenarios:
+- Option A: Often the "safe" or conventional choice
+- Option B: A more adventurous or different timing
+- Option C: A balanced alternative or unique twist`;
+
+      // Add kid-friendliness if kids are mentioned
+      if (hasKids) {
+        scenarioGuidelines += `\n\nIMPORTANT: Kids are involved! Every scenario MUST include kid-friendly aspects:
+- Kid-friendly venue/activity
+- Appropriate timing (not too late)
+- Family-friendly entertainment options`;
+      }
+
+      // Add midpoint logic if multiple origins
+      if (participantOrigins.length >= 2) {
+        scenarioGuidelines += `\n\nIMPORTANT: Participants are coming from multiple locations: ${participantOrigins.join(', ')}.
+Each scenario MUST suggest a midpoint or fair location that minimizes total travel time for everyone.
+Explain the travel-time logic briefly in each scenario description.`;
+      }
+
+      // Handle vague prompts
+      if (isVague) {
+        scenarioGuidelines += `\n\nNOTE: The prompt is quite vague. Generate 3 WILDLY DIFFERENT starter concepts:
+- Option A: A laid-back indoor gathering (dinner, game night, movie marathon)
+- Option B: An active outdoor adventure (hike, beach day, sports)
+- Option C: A unique experience (escape room, cooking class, concert, road trip)
+Make them genuinely distinct to help the group find a direction.`;
+      }
+
+      // Add constraint awareness
+      if (constraints.date?.type === 'fixed') {
+        scenarioGuidelines += `\n\nDATE IS LOCKED: ${constraints.date.value || constraints.date.displayLabel}. All scenarios must use this date.`;
+      }
+      if (constraints.location?.type === 'fixed') {
+        scenarioGuidelines += `\n\nLOCATION IS LOCKED: ${constraints.location.value || constraints.location.displayLabel}. All scenarios must use this location.`;
+      }
+
       messages = [
         {
           role: 'system',
@@ -257,14 +369,11 @@ Each scenario should be complete and actionable - not vague options.
 Make them genuinely different in timing, vibe, or style.
 Today's date is ${new Date().toISOString().split('T')[0]}. Suggest dates in the near future.
 
-Guidelines for great scenarios:
-- Option A: Often the "safe" or conventional choice
-- Option B: A more adventurous or different timing
-- Option C: A balanced alternative or unique twist`
+${scenarioGuidelines}`
         },
         {
           role: 'user',
-          content: `Based on this event idea: "${sanitizedSparkPrompt}", create 3 distinct scenarios for the group to choose from.`
+          content: `Based on this event idea: "${sanitizedSparkPrompt}", create 3 distinct scenarios for the group to choose from.${contextAnalysis ? `\n\nContext analysis: ${JSON.stringify(contextAnalysis)}` : ''}`
         }
       ];
 
@@ -281,29 +390,38 @@ Guidelines for great scenarios:
                 items: {
                   type: 'object',
                   properties: {
-                    label: { 
-                      type: 'string',
-                      description: 'Option label (A, B, or C)'
+                    label: { type: 'string', description: 'Option label (A, B, or C)' },
+                    title: { type: 'string', description: 'Short catchy title' },
+                    description: { type: 'string', description: 'A compelling 1-2 sentence description' },
+                    suggested_date: { type: 'string', description: 'Suggested date in YYYY-MM-DD format' },
+                    time_of_day: { type: 'string', enum: ['morning', 'afternoon', 'evening'] },
+                    vibe: { type: 'string', enum: ['casual', 'active', 'relaxed', 'formal'] },
+                    // New context-aware fields
+                    constraints_applied: {
+                      type: 'object',
+                      properties: {
+                        date_locked: { type: 'boolean' },
+                        location_locked: { type: 'boolean' },
+                        time_locked: { type: 'boolean' }
+                      }
                     },
-                    title: { 
-                      type: 'string',
-                      description: 'Short catchy title like "Friday Night / Casual" or "Saturday Brunch / Relaxed"'
+                    special_traits: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          type: { type: 'string', enum: ['kid_friendly', 'accessibility', 'dietary', 'budget', 'midpoint', 'nightlife', 'outdoor', 'indoor'] },
+                          label: { type: 'string' },
+                          description: { type: 'string' }
+                        }
+                      }
                     },
-                    description: { 
-                      type: 'string',
-                      description: 'A compelling 1-2 sentence description of this scenario'
-                    },
-                    suggested_date: { 
-                      type: 'string',
-                      description: 'Suggested date in YYYY-MM-DD format'
-                    },
-                    time_of_day: { 
-                      type: 'string',
-                      enum: ['morning', 'afternoon', 'evening']
-                    },
-                    vibe: { 
-                      type: 'string',
-                      enum: ['casual', 'active', 'relaxed', 'formal']
+                    midpoint_info: {
+                      type: 'object',
+                      properties: {
+                        suggested_location: { type: 'string' },
+                        travel_logic: { type: 'string', description: 'Brief explanation of why this is a fair midpoint' }
+                      }
                     }
                   },
                   required: ['label', 'title', 'description', 'suggested_date', 'time_of_day', 'vibe'],
@@ -311,6 +429,15 @@ Guidelines for great scenarios:
                 },
                 minItems: 3,
                 maxItems: 3
+              },
+              metadata: {
+                type: 'object',
+                properties: {
+                  has_locked_constraints: { type: 'boolean' },
+                  requires_midpoint: { type: 'boolean' },
+                  kid_friendly_required: { type: 'boolean' },
+                  is_starter_concepts: { type: 'boolean', description: 'True if these are wildly different concepts for a vague prompt' }
+                }
               }
             },
             required: ['scenarios'],
@@ -321,24 +448,33 @@ Guidelines for great scenarios:
       tool_choice = { type: 'function', function: { name: 'create_scenarios' } };
 
     } else if (action === 'synthesize-winner') {
-      // Analyze votes and determine the winner
       messages = [
         {
           role: 'system',
           content: `You are analyzing group voting results to determine the winning scenario.
-Consider both rankings and dealbreakers. A scenario with many dealbreakers should be penalized heavily.
-Provide clear reasoning for your recommendation.`
+Consider both rankings and dealbreakers. A scenario with ANY dealbreakers should be heavily penalized.
+The goal is to find the option that works for EVERYONE - consensus over majority.
+
+Scoring:
+- First choice (rank 1): +3 points
+- Second choice (rank 2): +2 points  
+- Third choice (rank 3): +1 point
+- Each dealbreaker: -10 points (vetoes are powerful!)
+
+Calculate a "Consensus Score" (0-100%) for each option:
+- 100% = Everyone's first choice, no dealbreakers
+- 0% = All dealbreakers
+
+Only recommend "Finalize" when:
+1. Clear majority preference (>60% consensus)
+2. ZERO dealbreakers on the winning option
+
+If stuck, provide a constructive suggestion.`
         },
         {
           role: 'user',
           content: `Analyze these preference votes and determine the winning scenario:
-${JSON.stringify(participantPreferences, null, 2)}
-
-Consider:
-1. First choice votes (rank 1) are worth 3 points
-2. Second choice (rank 2) is worth 2 points
-3. Third choice (rank 3) is worth 1 point
-4. Each dealbreaker subtracts 5 points from that scenario`
+${JSON.stringify(participantPreferences, null, 2)}`
         }
       ];
 
@@ -350,13 +486,15 @@ Consider:
           parameters: {
             type: 'object',
             properties: {
-              winningScenarioId: {
-                type: 'string',
-                description: 'The ID of the winning scenario'
-              },
-              reasoning: {
-                type: 'string',
-                description: 'Explanation of why this scenario won (2-3 sentences)'
+              winningScenarioId: { type: 'string', description: 'The ID of the winning scenario' },
+              reasoning: { type: 'string', description: 'Explanation of why this scenario won (2-3 sentences)' },
+              recommendation: {
+                type: 'object',
+                properties: {
+                  canFinalize: { type: 'boolean', description: 'True if clear consensus without vetoes' },
+                  message: { type: 'string', description: 'AI recommendation message to display' },
+                  actionSuggested: { type: 'string', enum: ['finalize', 'wait_for_votes', 'discuss_dealbreakers', 'consider_alternative'] }
+                }
               },
               scores: {
                 type: 'array',
@@ -365,13 +503,14 @@ Consider:
                   properties: {
                     scenarioId: { type: 'string' },
                     score: { type: 'number' },
+                    consensusPercent: { type: 'number', description: '0-100 consensus percentage' },
                     firstChoiceVotes: { type: 'number' },
                     dealbreakers: { type: 'number' }
                   }
                 }
               }
             },
-            required: ['winningScenarioId', 'reasoning', 'scores'],
+            required: ['winningScenarioId', 'reasoning', 'recommendation', 'scores'],
             additionalProperties: false
           }
         }
@@ -417,7 +556,6 @@ Consider:
     const data = await response.json();
     console.log('AI Gateway response received');
 
-    // Extract the tool call result
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) {
       console.error('No tool call in response:', JSON.stringify(data));

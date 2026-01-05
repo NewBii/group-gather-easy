@@ -1,11 +1,30 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Save, Check } from 'lucide-react';
+import { Loader2, Save, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScenarioCard } from './ScenarioCard';
-import { GroupMomentum } from './GroupMomentum';
+import { ConsensusScore } from './ConsensusScore';
+import { ConstraintBadge } from './ConstraintBadge';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+
+interface SpecialTrait {
+  type: 'kid_friendly' | 'accessibility' | 'dietary' | 'budget' | 'midpoint' | 'nightlife' | 'outdoor' | 'indoor';
+  label: string;
+  description?: string;
+}
+
+interface ConstraintsApplied {
+  date_locked?: boolean;
+  location_locked?: boolean;
+  time_locked?: boolean;
+}
+
+interface MidpointInfoData {
+  suggested_location?: string;
+  travel_logic?: string;
+}
 
 interface Scenario {
   id: string;
@@ -15,6 +34,22 @@ interface Scenario {
   suggested_date?: string;
   suggested_time_of_day?: string;
   suggested_vibe?: string;
+  metadata?: {
+    constraints_applied?: ConstraintsApplied;
+    special_traits?: SpecialTrait[];
+    midpoint_info?: MidpointInfoData;
+  } | null;
+}
+
+interface ContextAnalysis {
+  constraints?: {
+    date?: { type: 'fixed' | 'flexible' | 'missing'; displayLabel?: string };
+    location?: { type: 'fixed' | 'flexible' | 'missing'; displayLabel?: string };
+    time?: { type: 'fixed' | 'flexible' | 'missing'; displayLabel?: string };
+  };
+  specialRequirements?: Array<{ type: string; label: string }>;
+  participantOrigins?: string[];
+  isVague?: boolean;
 }
 
 interface PulseVotingProps {
@@ -24,6 +59,7 @@ interface PulseVotingProps {
   totalParticipants: number;
   isOrganizer?: boolean;
   onFinalize?: () => void;
+  contextAnalysis?: ContextAnalysis | null;
 }
 
 interface VoteState {
@@ -40,6 +76,7 @@ export const PulseVoting = ({
   totalParticipants,
   isOrganizer,
   onFinalize,
+  contextAnalysis,
 }: PulseVotingProps) => {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -76,11 +113,9 @@ export const PulseVoting = ({
   }, [participantId, eventId]);
 
   const handleRankChange = (scenarioId: string, rank: number | null) => {
-    // If setting a rank, remove that rank from other scenarios
     const newVotes = { ...votes };
 
     if (rank !== null) {
-      // Remove this rank from any other scenario
       Object.keys(newVotes).forEach((id) => {
         if (id !== scenarioId && newVotes[id]?.rank === rank) {
           newVotes[id] = { ...newVotes[id], rank: null };
@@ -124,14 +159,12 @@ export const PulseVoting = ({
     setIsSaving(true);
 
     try {
-      // Delete existing votes for this participant
       await supabase
         .from('scenario_votes')
         .delete()
         .eq('participant_id', participantId)
         .eq('event_id', eventId);
 
-      // Insert new votes
       const votesToInsert = Object.entries(votes)
         .filter(([_, v]) => v.rank !== null || v.isDealbreaker)
         .map(([scenarioId, v]) => ({
@@ -167,18 +200,61 @@ export const PulseVoting = ({
   };
 
   const canVote = !!participantId;
+  const constraints = contextAnalysis?.constraints;
+  const isStarterConcepts = contextAnalysis?.isVague;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold text-foreground">
-          {t.aiConcierge?.pulse?.title || 'Choose Your Preference'}
+          {isStarterConcepts 
+            ? 'Which Direction Feels Right?' 
+            : t.aiConcierge?.pulse?.title || 'Choose Your Preference'}
         </h2>
         <p className="text-muted-foreground">
-          {t.aiConcierge?.pulse?.subtitle || 'Rank these options and mark any dealbreakers'}
+          {isStarterConcepts
+            ? 'These are starter concepts to help the group find direction. Rank them or veto what doesn\'t work!'
+            : t.aiConcierge?.pulse?.subtitle || 'Rank these options and veto any dealbreakers'}
         </p>
       </div>
+
+      {/* Constraint badges - show what's locked vs flexible */}
+      {constraints && (
+        <div className="flex flex-wrap gap-2 justify-center">
+          {constraints.date && (
+            <ConstraintBadge
+              type={constraints.date.type}
+              category="date"
+              displayLabel={constraints.date.displayLabel || (constraints.date.type === 'fixed' ? 'Date locked' : constraints.date.type === 'flexible' ? 'Vote on date' : 'Date TBD')}
+            />
+          )}
+          {constraints.location && (
+            <ConstraintBadge
+              type={constraints.location.type}
+              category="location"
+              displayLabel={constraints.location.displayLabel || (constraints.location.type === 'fixed' ? 'Location set' : constraints.location.type === 'flexible' ? 'Vote on location' : 'Location TBD')}
+            />
+          )}
+          {constraints.time && constraints.time.type !== 'missing' && (
+            <ConstraintBadge
+              type={constraints.time.type}
+              category="time"
+              displayLabel={constraints.time.displayLabel || (constraints.time.type === 'fixed' ? 'Time locked' : 'Vote on time')}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Veto power info */}
+      {canVote && (
+        <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800 dark:text-amber-200">
+            <strong>Your veto matters!</strong> Use it wisely - options with vetoes are heavily penalized. We're looking for something that works for everyone.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Scenarios */}
@@ -239,10 +315,10 @@ export const PulseVoting = ({
           )}
         </div>
 
-        {/* Group Momentum sidebar */}
+        {/* Consensus Score sidebar (replaces GroupMomentum) */}
         <div className="lg:col-span-1">
           <div className="sticky top-4">
-            <GroupMomentum
+            <ConsensusScore
               eventId={eventId}
               scenarios={scenarios}
               totalParticipants={totalParticipants}
