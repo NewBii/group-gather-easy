@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { User } from '@supabase/supabase-js';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { EventCreatedPrompt } from '@/components/EventCreatedPrompt';
@@ -38,10 +39,26 @@ const CreateEvent = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   
+  // Auth state
+  const [user, setUser] = useState<User | null>(null);
+
   // Wizard state
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdEvent, setCreatedEvent] = useState<{ id: string; slug: string } | null>(null);
+
+  // Get current user session
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Date state
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
@@ -161,6 +178,7 @@ const CreateEvent = () => {
           location_type: decideLaterLocation ? null : values.locationType,
           unique_slug: slug,
           status: 'active',
+          created_by: user?.id ?? null,
         })
         .select()
         .single();
