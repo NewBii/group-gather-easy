@@ -154,68 +154,29 @@ export const useParticipant = (eventId: string | undefined) => {
     }
   };
 
-  // Join event as participant
+  // Join event as participant using SECURITY DEFINER function
   const joinEvent = async (name: string, email?: string) => {
     if (!eventId) return null;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Use the SECURITY DEFINER function - works for both auth and anon users
+      const { data, error } = await supabase.rpc('join_event_as_participant', {
+        p_event_id: eventId,
+        p_name: name.trim(),
+        p_email: email?.trim() || null,
+      });
 
-      if (user) {
-        // Authenticated user: can use insert().select() with updated RLS policy
-        const { data: participant, error } = await supabase
-          .from('participants')
-          .insert({
-            event_id: eventId,
-            name: name.trim(),
-            email: email?.trim() || null,
-            user_id: user.id,
-            is_organizer: false,
-          })
-          .select('id, name, email, user_id, is_organizer')
-          .single();
+      if (error) throw error;
 
-        if (error) throw error;
+      // RPC returns an array, get the first row
+      const participant = Array.isArray(data) ? data[0] : data;
 
-        if (participant) {
-          setCurrentParticipant(participant);
-          storeParticipantSession(eventId, participant.id);
-        }
-
-        return participant;
-      } else {
-        // Anonymous user: insert without select, then fetch separately
-        const { error: insertError } = await supabase
-          .from('participants')
-          .insert({
-            event_id: eventId,
-            name: name.trim(),
-            email: email?.trim() || null,
-            user_id: null,
-            is_organizer: false,
-          });
-
-        if (insertError) throw insertError;
-
-        // Fetch the participant we just created (works for anonymous events)
-        const { data: participant, error: selectError } = await supabase
-          .from('participants')
-          .select('id, name, email, user_id, is_organizer')
-          .eq('event_id', eventId)
-          .eq('name', name.trim())
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (selectError) throw selectError;
-
-        if (participant) {
-          setCurrentParticipant(participant);
-          storeParticipantSession(eventId, participant.id);
-        }
-
-        return participant;
+      if (participant) {
+        setCurrentParticipant(participant);
+        storeParticipantSession(eventId, participant.id);
       }
+
+      return participant;
     } catch (err) {
       console.error('Error joining event:', err);
       throw err;
