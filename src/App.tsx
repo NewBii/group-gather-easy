@@ -18,6 +18,7 @@ import MyEvents from "./pages/MyEvents";
 import Account from "./pages/Account";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
+import Docs from "./pages/Docs";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/my-events" element={<MyEvents />} />
               <Route path="/account" element={<Account />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/docs" element={<Docs />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>
