@@ -7,6 +7,7 @@ import { format, parseISO } from 'date-fns';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { ConstraintBadge, SpecialTraitBadge, MidpointInfo } from './ConstraintBadge';
 import { DateAvailabilityPicker, type DateOption, type DateVote } from './DateAvailabilityPicker';
+import { MatchedSparkBadge } from './MatchedSparkBadge';
 
 interface SpecialTrait {
   type: 'kid_friendly' | 'accessibility' | 'dietary' | 'budget' | 'midpoint' | 'nightlife' | 'outdoor' | 'indoor';
@@ -23,6 +24,12 @@ interface ConstraintsApplied {
 interface MidpointInfoData {
   suggested_location?: string;
   travel_logic?: string;
+}
+
+interface MatchedSpark {
+  id: string;
+  text: string;
+  participantName?: string;
 }
 
 interface ScenarioCardProps {
@@ -51,6 +58,7 @@ interface ScenarioCardProps {
   dateVotes?: DateVote[];
   participantId?: string;
   onDateVoteChange?: () => void;
+  matchedSparks?: MatchedSpark[];
 }
 
 const timeIcons = {
@@ -78,6 +86,7 @@ export const ScenarioCard = ({
   dateVotes = [],
   participantId,
   onDateVoteChange,
+  matchedSparks = [],
 }: ScenarioCardProps) => {
   const { language } = useLanguage();
   const time = scenario.suggested_time_of_day as keyof typeof timeIcons;
@@ -237,6 +246,11 @@ export const ScenarioCard = ({
             suggestedLocation={midpointInfo.suggested_location}
             travelLogic={midpointInfo.travel_logic || ''}
           />
+        )}
+
+        {/* Matched sparks badge - "I've been heard" visual */}
+        {matchedSparks.length > 0 && (
+          <MatchedSparkBadge matchedSparks={matchedSparks} />
         )}
 
         {/* Ranking buttons */}

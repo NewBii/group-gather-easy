@@ -5,6 +5,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScenarioCard } from './ScenarioCard';
 import { ConsensusScore } from './ConsensusScore';
 import { ConstraintBadge } from './ConstraintBadge';
+import { ParticipantVoice } from './ParticipantVoice';
+import { GroupWishlist } from './GroupWishlist';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,6 +64,18 @@ interface PulseVotingProps {
   isOrganizer?: boolean;
   onFinalize?: () => void;
   contextAnalysis?: ContextAnalysis | null;
+  onRegenerateScenarios?: () => void;
+  isRegenerating?: boolean;
+}
+
+interface MatchedSpark {
+  id: string;
+  text: string;
+  participantName?: string;
+}
+
+interface ScenarioSparksMap {
+  [scenarioId: string]: MatchedSpark[];
 }
 
 interface VoteState {
@@ -87,6 +101,8 @@ export const PulseVoting = ({
   isOrganizer,
   onFinalize,
   contextAnalysis,
+  onRegenerateScenarios,
+  isRegenerating,
 }: PulseVotingProps) => {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -96,6 +112,8 @@ export const PulseVoting = ({
   const [savedVotes, setSavedVotes] = useState<VoteState>({});
   const [dateOptionsMap, setDateOptionsMap] = useState<DateOptionsMap>({});
   const [dateVotesMap, setDateVotesMap] = useState<DateVotesMap>({});
+  const [scenarioSparksMap, setScenarioSparksMap] = useState<ScenarioSparksMap>({});
+  const [sparksRefreshKey, setSparksRefreshKey] = useState(0);
 
   // Load date options for scenarios
   useEffect(() => {
@@ -199,6 +217,42 @@ export const PulseVoting = ({
 
     loadVotes();
   }, [participantId, eventId]);
+
+  // Load matched sparks for scenarios
+  useEffect(() => {
+    const loadMatchedSparks = async () => {
+      const { data } = await supabase
+        .from('participant_sparks')
+        .select(`
+          id,
+          spark_text,
+          integrated_into_scenario_id,
+          participant_id,
+          participants!inner(name)
+        `)
+        .eq('event_id', eventId)
+        .eq('is_integrated', true)
+        .not('integrated_into_scenario_id', 'is', null);
+
+      if (data) {
+        const sparksMap: ScenarioSparksMap = {};
+        data.forEach((spark: any) => {
+          const scenarioId = spark.integrated_into_scenario_id;
+          if (!sparksMap[scenarioId]) {
+            sparksMap[scenarioId] = [];
+          }
+          sparksMap[scenarioId].push({
+            id: spark.id,
+            text: spark.spark_text,
+            participantName: spark.participants?.name,
+          });
+        });
+        setScenarioSparksMap(sparksMap);
+      }
+    };
+
+    loadMatchedSparks();
+  }, [eventId, sparksRefreshKey]);
 
   const handleRankChange = (scenarioId: string, rank: number | null) => {
     const newVotes = { ...votes };
@@ -362,9 +416,19 @@ export const PulseVoting = ({
                 dateVotes={dateVotesMap[scenario.id] || []}
                 participantId={participantId}
                 onDateVoteChange={() => {}}
+                matchedSparks={scenarioSparksMap[scenario.id] || []}
               />
             ))}
           </div>
+
+          {/* Participant Voice input */}
+          {canVote && (
+            <ParticipantVoice
+              eventId={eventId}
+              participantId={participantId}
+              onSparkAdded={() => setSparksRefreshKey((k) => k + 1)}
+            />
+          )}
 
           {/* Save button */}
           {canVote && (
@@ -407,13 +471,20 @@ export const PulseVoting = ({
           )}
         </div>
 
-        {/* Consensus Score sidebar (replaces GroupMomentum) */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-4">
+        {/* Sidebar with Consensus Score and Group Wishlist */}
+        <div className="lg:col-span-1 space-y-4">
+          <div className="sticky top-4 space-y-4">
             <ConsensusScore
               eventId={eventId}
               scenarios={scenarios}
               totalParticipants={totalParticipants}
+            />
+            <GroupWishlist
+              eventId={eventId}
+              isOrganizer={isOrganizer}
+              onRegenerateScenarios={onRegenerateScenarios}
+              isRegenerating={isRegenerating}
+              currentParticipantId={participantId}
             />
           </div>
         </div>

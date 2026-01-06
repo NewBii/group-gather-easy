@@ -86,13 +86,16 @@ serve(async (req) => {
     const body = await req.json();
     const { action, sparkPrompt, eventId, participantPreferences } = body;
 
-    const validActions = ['generate-draft', 'generate-scenarios', 'synthesize-winner', 'analyze-context'];
+    const validActions = ['generate-draft', 'generate-scenarios', 'synthesize-winner', 'analyze-context', 'regenerate-scenarios'];
     if (!validActions.includes(action)) {
       return new Response(
         JSON.stringify({ error: 'Invalid action' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Parse existingSparks for regenerate-scenarios
+    const existingSparks = body.existingSparks;
 
     // Determine if this action can be performed anonymously
     const isPublicAction = PUBLIC_ACTIONS.includes(action);
@@ -152,7 +155,7 @@ serve(async (req) => {
     console.log(`AI Event Assistant - Action: ${action}, EventId: ${eventId}, User: ${userId || 'anonymous'}, IP: ${clientIP}`);
 
     let sanitizedSparkPrompt: string | undefined;
-    if (action === 'generate-draft' || action === 'generate-scenarios' || action === 'analyze-context') {
+    if (action === 'generate-draft' || action === 'generate-scenarios' || action === 'analyze-context' || action === 'regenerate-scenarios') {
       const promptValidation = validateSparkPrompt(sparkPrompt);
       if (!promptValidation.valid) {
         return new Response(
@@ -497,6 +500,128 @@ ${scenarioGuidelines}`
         }
       }];
       tool_choice = { type: 'function', function: { name: 'create_scenarios' } };
+
+    } else if (action === 'regenerate-scenarios') {
+      // Regenerate scenarios incorporating participant sparks
+      const contextAnalysis = body.contextAnalysis;
+      const sparks = existingSparks || [];
+      
+      // Categorize sparks
+      const mustHaves = sparks.filter((s: any) => s.category === 'must_have');
+      const niceToHaves = sparks.filter((s: any) => s.category === 'nice_to_have');
+      const dealbreakers = sparks.filter((s: any) => s.category === 'dealbreaker');
+
+      let sparkInstructions = '';
+      
+      if (mustHaves.length > 0) {
+        sparkInstructions += `\n\nMUST-HAVE REQUIREMENTS (these are non-negotiable, every scenario MUST address these):\n`;
+        mustHaves.forEach((s: any, i: number) => {
+          sparkInstructions += `${i + 1}. "${s.text}" (ID: ${s.id})\n`;
+        });
+      }
+      
+      if (niceToHaves.length > 0) {
+        sparkInstructions += `\n\nNICE-TO-HAVE PREFERENCES (try to incorporate these where possible):\n`;
+        niceToHaves.forEach((s: any, i: number) => {
+          sparkInstructions += `${i + 1}. "${s.text}" (ID: ${s.id})\n`;
+        });
+      }
+      
+      if (dealbreakers.length > 0) {
+        sparkInstructions += `\n\nDEALBREAKERS (avoid these at all costs):\n`;
+        dealbreakers.forEach((s: any, i: number) => {
+          sparkInstructions += `${i + 1}. "${s.text}" (ID: ${s.id})\n`;
+        });
+      }
+
+      messages = [
+        {
+          role: 'system',
+          content: `You are an expert event planner incorporating group feedback into your scenarios.
+The group has provided specific requirements and preferences. You MUST address these in your new scenarios.
+
+${sparkInstructions}
+
+IMPORTANT: For each spark you address in a scenario, include its ID in the integrated_sparks array for that scenario.
+Today's date is ${new Date().toISOString().split('T')[0]}. Suggest dates in the near future.`
+        },
+        {
+          role: 'user',
+          content: `Regenerate 3 event scenarios for: "${sanitizedSparkPrompt}"
+          
+Incorporate all the participant requirements listed above.${contextAnalysis ? `\n\nOriginal context: ${JSON.stringify(contextAnalysis)}` : ''}`
+        }
+      ];
+
+      tools = [{
+        type: 'function',
+        function: {
+          name: 'create_scenarios_with_sparks',
+          description: 'Create 3 distinct event scenarios incorporating participant requirements',
+          parameters: {
+            type: 'object',
+            properties: {
+              scenarios: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    label: { type: 'string', description: 'Option label (A, B, or C)' },
+                    title: { type: 'string', description: 'Short catchy title' },
+                    description: { type: 'string', description: 'A compelling 1-2 sentence description that mentions how participant requirements are addressed' },
+                    suggested_date: { type: 'string', description: 'Suggested date in YYYY-MM-DD format' },
+                    time_of_day: { type: 'string', enum: ['morning', 'afternoon', 'evening'] },
+                    vibe: { type: 'string', enum: ['casual', 'active', 'relaxed', 'formal'] },
+                    constraints_applied: {
+                      type: 'object',
+                      properties: {
+                        date_locked: { type: 'boolean' },
+                        location_locked: { type: 'boolean' },
+                        time_locked: { type: 'boolean' }
+                      }
+                    },
+                    special_traits: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          type: { type: 'string', enum: ['kid_friendly', 'accessibility', 'dietary', 'budget', 'midpoint', 'nightlife', 'outdoor', 'indoor'] },
+                          label: { type: 'string' },
+                          description: { type: 'string' }
+                        }
+                      }
+                    },
+                    integrated_spark_ids: {
+                      type: 'array',
+                      items: { type: 'string' },
+                      description: 'IDs of sparks that are addressed by this scenario'
+                    }
+                  },
+                  required: ['label', 'title', 'description', 'suggested_date', 'time_of_day', 'vibe'],
+                  additionalProperties: false
+                },
+                minItems: 3,
+                maxItems: 3
+              },
+              integratedSparks: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    sparkId: { type: 'string', description: 'ID of the spark' },
+                    scenarioLabel: { type: 'string', description: 'Which scenario (A, B, or C) addresses this spark' },
+                    howAddressed: { type: 'string', description: 'Brief explanation of how the spark was addressed' }
+                  }
+                },
+                description: 'Mapping of which sparks were integrated into which scenarios'
+              }
+            },
+            required: ['scenarios', 'integratedSparks'],
+            additionalProperties: false
+          }
+        }
+      }];
+      tool_choice = { type: 'function', function: { name: 'create_scenarios_with_sparks' } };
 
     } else if (action === 'synthesize-winner') {
       messages = [
