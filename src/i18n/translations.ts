@@ -296,6 +296,8 @@ interface Translations {
       emailPlaceholder: string;
       joinButton: string;
       success: string;
+      captchaRequired: string;
+      captchaFailed: string;
       error: string;
       welcomeBack: string;
       orLogin: string;
@@ -737,6 +739,8 @@ export const translations: Record<Language, Translations> = {
         emailPlaceholder: 'Pour recevoir des notifications',
         joinButton: 'Participer',
         success: 'Vous avez rejoint l\'événement !',
+        captchaRequired: 'Veuillez compléter la vérification',
+        captchaFailed: 'La vérification a échoué, veuillez réessayer',
         error: 'Erreur lors de l\'inscription',
         welcomeBack: 'Content de vous revoir, {name} !',
         orLogin: 'Se connecter',
@@ -1232,6 +1236,8 @@ export const translations: Record<Language, Translations> = {
         emailPlaceholder: 'To receive notifications',
         joinButton: 'Join',
         success: 'You have joined the event!',
+        captchaRequired: 'Please complete the verification',
+        captchaFailed: 'Verification failed, please try again',
         error: 'Error joining event',
         welcomeBack: 'Welcome back, {name}!',
         orLogin: 'Log in',
