@@ -636,6 +636,81 @@ export type Database = {
           },
         ]
       }
+      participant_sparks: {
+        Row: {
+          category: Database["public"]["Enums"]["spark_category"]
+          created_at: string
+          event_id: string
+          id: string
+          integrated_into_scenario_id: string | null
+          integration_note: string | null
+          is_integrated: boolean
+          participant_id: string
+          spark_text: string
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["spark_category"]
+          created_at?: string
+          event_id: string
+          id?: string
+          integrated_into_scenario_id?: string | null
+          integration_note?: string | null
+          is_integrated?: boolean
+          participant_id: string
+          spark_text: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["spark_category"]
+          created_at?: string
+          event_id?: string
+          id?: string
+          integrated_into_scenario_id?: string | null
+          integration_note?: string | null
+          is_integrated?: boolean
+          participant_id?: string
+          spark_text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participant_sparks_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participant_sparks_integrated_into_scenario_id_fkey"
+            columns: ["integrated_into_scenario_id"]
+            isOneToOne: false
+            referencedRelation: "ai_scenarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participant_sparks_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participant_sparks_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants_masked"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participant_sparks_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participants: {
         Row: {
           created_at: string
@@ -1034,6 +1109,7 @@ export type Database = {
       event_status: "draft" | "active" | "completed" | "cancelled"
       event_type: "day_event" | "trip"
       location_type: "set_venues" | "suggestions" | "fair_spot"
+      spark_category: "must_have" | "nice_to_have" | "dealbreaker"
       transport_mode: "car" | "public_transit" | "bike" | "walk"
       vote_type: "yes" | "no" | "maybe"
     }
@@ -1167,6 +1243,7 @@ export const Constants = {
       event_status: ["draft", "active", "completed", "cancelled"],
       event_type: ["day_event", "trip"],
       location_type: ["set_venues", "suggestions", "fair_spot"],
+      spark_category: ["must_have", "nice_to_have", "dealbreaker"],
       transport_mode: ["car", "public_transit", "bike", "walk"],
       vote_type: ["yes", "no", "maybe"],
     },

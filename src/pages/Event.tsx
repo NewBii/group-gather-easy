@@ -70,6 +70,7 @@ const Event = () => {
   const [winningScenario, setWinningScenario] = useState<AIScenario | null>(null);
   const [user, setUser] = useState<{ id: string } | null>(null);
   const [contextAnalysis, setContextAnalysis] = useState<ContextAnalysis | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   const {
     event,
@@ -134,6 +135,116 @@ const Event = () => {
   }, [event?.id, organizationMode, aiPhase]);
 
   const isOrganizer = user?.id && eventData?.created_by === user.id;
+
+  const handleRegenerateScenarios = async () => {
+    if (!event?.id || !eventData?.spark_prompt) return;
+
+    setIsRegenerating(true);
+    try {
+      // Fetch all unintegrated sparks
+      const { data: sparks } = await supabase
+        .from('participant_sparks')
+        .select('*')
+        .eq('event_id', event.id)
+        .eq('is_integrated', false);
+
+      if (!sparks || sparks.length === 0) {
+        toast({ title: 'No new requirements to integrate', variant: 'destructive' });
+        setIsRegenerating(false);
+        return;
+      }
+
+      // Call AI to regenerate scenarios with sparks
+      const { data: result, error } = await supabase.functions.invoke('ai-event-assistant', {
+        body: {
+          action: 'regenerate-scenarios',
+          sparkPrompt: eventData.spark_prompt,
+          eventId: event.id,
+          contextAnalysis,
+          existingSparks: sparks.map((s: any) => ({
+            id: s.id,
+            text: s.spark_text,
+            category: s.category,
+          })),
+        },
+      });
+
+      if (error) throw error;
+
+      // Update scenarios in the database
+      const newScenarios = result.data?.scenarios || [];
+      const integratedSparks = result.data?.integratedSparks || [];
+
+      // Delete old scenarios and insert new ones
+      await supabase.from('ai_scenarios').delete().eq('event_id', event.id);
+
+      for (const scenario of newScenarios) {
+        const { data: insertedScenario } = await supabase.from('ai_scenarios').insert({
+          event_id: event.id,
+          scenario_label: `Option ${scenario.label}`,
+          title: scenario.title,
+          description: scenario.description,
+          suggested_date: scenario.suggested_date,
+          suggested_time_of_day: scenario.time_of_day,
+          suggested_vibe: scenario.vibe,
+          metadata: {
+            constraints_applied: scenario.constraints_applied,
+            special_traits: scenario.special_traits,
+            midpoint_info: scenario.midpoint_info,
+            date_is_flexible: scenario.date_is_flexible,
+          },
+        }).select().single();
+
+        // Update sparks that were integrated into this scenario
+        if (insertedScenario) {
+          const matchingSparkIds = integratedSparks
+            .filter((is: any) => is.scenarioLabel === scenario.label)
+            .map((is: any) => is.sparkId);
+
+          if (matchingSparkIds.length > 0) {
+            await supabase
+              .from('participant_sparks')
+              .update({
+                is_integrated: true,
+                integrated_into_scenario_id: insertedScenario.id,
+                integration_note: `Included in ${scenario.title}`,
+              })
+              .in('id', matchingSparkIds);
+          }
+        }
+      }
+
+      // Mark remaining sparks as integrated (even if not matched to specific scenario)
+      const allSparkIds = sparks.map((s: any) => s.id);
+      const matchedIds = integratedSparks.map((is: any) => is.sparkId);
+      const unmatchedIds = allSparkIds.filter((id: string) => !matchedIds.includes(id));
+      
+      if (unmatchedIds.length > 0) {
+        await supabase
+          .from('participant_sparks')
+          .update({ is_integrated: true, integration_note: 'Considered in scenario generation' })
+          .in('id', unmatchedIds);
+      }
+
+      // Refresh scenarios
+      const { data: refreshedScenarios } = await supabase
+        .from('ai_scenarios')
+        .select('*')
+        .eq('event_id', event.id)
+        .order('scenario_label');
+
+      if (refreshedScenarios) {
+        setScenarios(refreshedScenarios as AIScenario[]);
+      }
+
+      toast({ title: 'Scenarios updated with new requirements!' });
+    } catch (error) {
+      console.error('Error regenerating scenarios:', error);
+      toast({ title: 'Error updating scenarios', variant: 'destructive' });
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
   const handleFinalize = async () => {
     if (!event?.id) return;
@@ -258,6 +369,8 @@ const Event = () => {
                   isOrganizer={isOrganizer} 
                   onFinalize={handleFinalize}
                   contextAnalysis={contextAnalysis}
+                  onRegenerateScenarios={handleRegenerateScenarios}
+                  isRegenerating={isRegenerating}
                 />
               )}
               <div className="lg:hidden">
