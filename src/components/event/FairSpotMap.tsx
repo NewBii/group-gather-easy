@@ -3,13 +3,14 @@ import { MapPin, Car, Train, Bike, Footprints, Navigation, Loader2 } from 'lucid
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import type { Participant } from '@/hooks/useEventData';
+import type { Participant, FullParticipant } from '@/hooks/useEventData';
 import { escapeHtml } from '@/lib/htmlSanitizer';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface FairSpotMapProps {
   participants: Participant[];
+  eventId: string;
   fairSpotAddress?: string | null;
 }
 
@@ -21,30 +22,46 @@ interface FairSpot {
 // Transport mode weights for fair spot calculation
 const TRANSPORT_WEIGHTS: Record<string, number> = {
   car: 1.0,
-  public_transport: 1.2,
+  public_transit: 1.2,
   bike: 1.5,
   walk: 2.0,
 };
 
 const TRANSPORT_COLORS: Record<string, string> = {
   car: '#3b82f6',
-  public_transport: '#22c55e',
+  public_transit: '#22c55e',
   bike: '#f59e0b',
   walk: '#8b5cf6',
 };
 
-export const FairSpotMap = ({ participants, fairSpotAddress }: FairSpotMapProps) => {
+export const FairSpotMap = ({ participants, eventId, fairSpotAddress }: FairSpotMapProps) => {
   const { t } = useLanguage();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   const [isLoadingToken, setIsLoadingToken] = useState(true);
+  const [participantsWithLocation, setParticipantsWithLocation] = useState<FullParticipant[]>([]);
 
-  const participantsWithLocation = useMemo(() => 
-    participants.filter(p => p.location_lat != null && p.location_lng != null),
-    [participants]
-  );
+  // Fetch location data from participants table (protected by RLS)
+  useEffect(() => {
+    const fetchLocationData = async () => {
+      if (!eventId) return;
+      
+      const { data, error } = await supabase
+        .from('participants')
+        .select('id, event_id, name, is_organizer, location_lat, location_lng, transport_mode, created_at')
+        .eq('event_id', eventId)
+        .not('location_lat', 'is', null)
+        .not('location_lng', 'is', null);
+
+      if (!error && data) {
+        setParticipantsWithLocation(data as FullParticipant[]);
+      }
+    };
+
+    fetchLocationData();
+  }, [eventId, participants]); // Re-fetch when participants list changes
 
   // Calculate fair meeting point using weighted centroid
   const fairSpot = useMemo((): FairSpot | null => {
@@ -193,7 +210,7 @@ export const FairSpotMap = ({ participants, fairSpotAddress }: FairSpotMapProps)
   const getTransportLabel = (mode: string | null): string => {
     const labels: Record<string, string> = {
       car: t.eventPage?.location?.transportModes?.car || 'Car',
-      public_transport: t.eventPage?.location?.transportModes?.publicTransport || 'Public Transport',
+      public_transit: t.eventPage?.location?.transportModes?.publicTransport || 'Public Transport',
       bike: t.eventPage?.location?.transportModes?.bike || 'Bike',
       walk: t.eventPage?.location?.transportModes?.walk || 'Walk',
     };
@@ -203,7 +220,7 @@ export const FairSpotMap = ({ participants, fairSpotAddress }: FairSpotMapProps)
   const getTransportIcon = (mode: string | null) => {
     switch (mode) {
       case 'car': return <Car className="h-3 w-3" />;
-      case 'public_transport': return <Train className="h-3 w-3" />;
+      case 'public_transit': return <Train className="h-3 w-3" />;
       case 'bike': return <Bike className="h-3 w-3" />;
       case 'walk': return <Footprints className="h-3 w-3" />;
       default: return <Car className="h-3 w-3" />;
@@ -213,12 +230,19 @@ export const FairSpotMap = ({ participants, fairSpotAddress }: FairSpotMapProps)
   const getTransportColor = (mode: string | null) => {
     switch (mode) {
       case 'car': return 'bg-blue-500';
-      case 'public_transport': return 'bg-green-500';
+      case 'public_transit': return 'bg-green-500';
       case 'bike': return 'bg-yellow-500';
       case 'walk': return 'bg-violet-500';
       default: return 'bg-blue-500';
     }
   };
+
+  // Create a map of participant IDs with location data
+  const locationMap = useMemo(() => {
+    const map = new Map<string, FullParticipant>();
+    participantsWithLocation.forEach(p => map.set(p.id, p));
+    return map;
+  }, [participantsWithLocation]);
 
   if (participantsWithLocation.length === 0) {
     return (
@@ -272,7 +296,8 @@ export const FairSpotMap = ({ participants, fairSpotAddress }: FairSpotMapProps)
         <CardContent className="pt-0">
           <div className="space-y-2">
             {participants.map((participant) => {
-              const hasLocation = participant.location_lat != null;
+              const fullData = locationMap.get(participant.id || '');
+              const hasLocation = !!fullData;
 
               return (
                 <div 
@@ -282,17 +307,17 @@ export const FairSpotMap = ({ participants, fairSpotAddress }: FairSpotMapProps)
                   <div className="flex items-center gap-2">
                     <div 
                       className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                        hasLocation ? getTransportColor(participant.transport_mode) : 'bg-gray-300'
+                        hasLocation ? getTransportColor(fullData?.transport_mode) : 'bg-gray-300'
                       }`}
                     >
-                      {participant.name.charAt(0).toUpperCase()}
+                      {(participant.name || '?').charAt(0).toUpperCase()}
                     </div>
                     <span className="text-sm">{participant.name}</span>
                   </div>
-                  {hasLocation ? (
-                    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs ${getTransportColor(participant.transport_mode)}`}>
-                      {getTransportIcon(participant.transport_mode)}
-                      <span>{getTransportLabel(participant.transport_mode)}</span>
+                  {hasLocation && fullData ? (
+                    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs ${getTransportColor(fullData.transport_mode)}`}>
+                      {getTransportIcon(fullData.transport_mode)}
+                      <span>{getTransportLabel(fullData.transport_mode)}</span>
                     </div>
                   ) : (
                     <span className="text-xs text-muted-foreground">

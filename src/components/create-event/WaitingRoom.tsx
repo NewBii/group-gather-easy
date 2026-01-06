@@ -25,7 +25,7 @@ export const WaitingRoom = ({ eventId, eventSlug, eventTitle }: WaitingRoomProps
     // Fetch initial participant count
     const fetchParticipants = async () => {
       const { count } = await supabase
-        .from('participants')
+        .from('participants_public')
         .select('*', { count: 'exact', head: true })
         .eq('event_id', eventId);
       setParticipantCount(count || 0);
