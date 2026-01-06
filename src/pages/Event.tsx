@@ -175,9 +175,15 @@ const Event = () => {
       const newScenarios = result.data?.scenarios || [];
       const integratedSparks = result.data?.integratedSparks || [];
 
-      // Delete old scenarios and insert new ones
+      // Delete old scenarios and their date options
+      await supabase.from('scenario_date_options').delete().in(
+        'scenario_id',
+        scenarios.map(s => s.id)
+      );
       await supabase.from('ai_scenarios').delete().eq('event_id', event.id);
 
+      // Insert new scenarios
+      const insertedScenarioIds: string[] = [];
       for (const scenario of newScenarios) {
         const { data: insertedScenario } = await supabase.from('ai_scenarios').insert({
           event_id: event.id,
@@ -195,8 +201,10 @@ const Event = () => {
           },
         }).select().single();
 
-        // Update sparks that were integrated into this scenario
         if (insertedScenario) {
+          insertedScenarioIds.push(insertedScenario.id);
+          
+          // Update sparks that were integrated into this scenario
           const matchingSparkIds = integratedSparks
             .filter((is: any) => is.scenarioLabel === scenario.label)
             .map((is: any) => is.sparkId);
@@ -212,6 +220,21 @@ const Event = () => {
               .in('id', matchingSparkIds);
           }
         }
+      }
+
+      // Insert date options for new scenarios if available
+      const dateOptions = result.data?.dateOptions;
+      if (dateOptions && dateOptions.length > 0 && insertedScenarioIds.length > 0) {
+        const dateOptionsToInsert = insertedScenarioIds.flatMap((scenarioId: string) =>
+          dateOptions.map((opt: any) => ({
+            scenario_id: scenarioId,
+            suggested_date: opt.date,
+            is_long_weekend: opt.is_long_weekend,
+            holiday_name: opt.holiday_name_fr || opt.holiday_name,
+          }))
+        );
+
+        await supabase.from('scenario_date_options').insert(dateOptionsToInsert);
       }
 
       // Mark remaining sparks as integrated (even if not matched to specific scenario)

@@ -136,15 +136,39 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
             constraints_applied: s.constraints_applied,
             special_traits: s.special_traits,
             midpoint_info: s.midpoint_info,
+            date_is_flexible: s.date_is_flexible,
           }
         }));
 
-        const { error: insertError } = await supabase
+        // Insert scenarios and get their IDs
+        const { data: insertedScenarios, error: insertError } = await supabase
           .from('ai_scenarios')
-          .insert(scenarios);
+          .insert(scenarios)
+          .select('id');
 
         if (insertError) {
           console.error('Error saving scenarios:', insertError);
+        }
+
+        // Insert date options for each scenario if date is flexible
+        const dateOptions = scenarioResponse.data.dateOptions;
+        if (dateOptions && dateOptions.length > 0 && insertedScenarios) {
+          const dateOptionsToInsert = insertedScenarios.flatMap((scenario: any) =>
+            dateOptions.map((opt: any) => ({
+              scenario_id: scenario.id,
+              suggested_date: opt.date,
+              is_long_weekend: opt.is_long_weekend,
+              holiday_name: opt.holiday_name_fr || opt.holiday_name,
+            }))
+          );
+
+          const { error: dateOptError } = await supabase
+            .from('scenario_date_options')
+            .insert(dateOptionsToInsert);
+
+          if (dateOptError) {
+            console.error('Error saving date options:', dateOptError);
+          }
         }
       }
 

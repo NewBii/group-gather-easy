@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trophy, Users, TrendingUp, AlertTriangle, CheckCircle2, MessageCircle, Loader2, Sparkles } from 'lucide-react';
+import { Trophy, Users, TrendingUp, AlertTriangle, CheckCircle2, MessageCircle, Loader2, Sparkles, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
+import { fr, enUS } from 'date-fns/locale';
 
 interface ConsensusScoreProps {
   eventId: string;
@@ -34,12 +36,22 @@ interface AIRecommendation {
   actionSuggested: 'finalize' | 'wait_for_votes' | 'discuss_dealbreakers' | 'consider_alternative';
 }
 
+interface TopDateInfo {
+  date: string;
+  availableCount: number;
+  totalVoters: number;
+  availabilityPercent: number;
+  isLongWeekend: boolean;
+  holidayName: string | null;
+}
+
 export const ConsensusScore = ({ eventId, scenarios, totalParticipants }: ConsensusScoreProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [scores, setScores] = useState<ScenarioScore[]>([]);
   const [votersCount, setVotersCount] = useState(0);
   const [recommendation, setRecommendation] = useState<AIRecommendation | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [topDate, setTopDate] = useState<TopDateInfo | null>(null);
 
   const calculateScores = async () => {
     const { data: votes } = await supabase
@@ -141,8 +153,116 @@ export const ConsensusScore = ({ eventId, scenarios, totalParticipants }: Consen
     }
   };
 
+  // Calculate top date from date votes
+  const calculateTopDate = async () => {
+    const scenarioIds = scenarios.map(s => s.id);
+    if (scenarioIds.length === 0) return;
+
+    // Fetch all date options
+    const { data: dateOptions } = await supabase
+      .from('scenario_date_options')
+      .select('*')
+      .in('scenario_id', scenarioIds);
+
+    if (!dateOptions || dateOptions.length === 0) return;
+
+    // Fetch all date votes
+    const { data: dateVotes } = await supabase
+      .from('scenario_date_votes')
+      .select('*')
+      .in('scenario_id', scenarioIds);
+
+    if (!dateVotes || dateVotes.length === 0) return;
+
+    // Aggregate by date (group same dates across scenarios)
+    const dateMap = new Map<string, { 
+      available: number; 
+      maybe: number; 
+      unavailable: number;
+      voters: Set<string>;
+      isLongWeekend: boolean;
+      holidayName: string | null;
+    }>();
+
+    // Initialize date map from options
+    dateOptions.forEach(opt => {
+      if (!dateMap.has(opt.suggested_date)) {
+        dateMap.set(opt.suggested_date, {
+          available: 0,
+          maybe: 0,
+          unavailable: 0,
+          voters: new Set(),
+          isLongWeekend: opt.is_long_weekend || false,
+          holidayName: opt.holiday_name,
+        });
+      }
+    });
+
+    // Count votes per date
+    dateVotes.forEach(vote => {
+      const opt = dateOptions.find(o => o.id === vote.date_option_id);
+      if (!opt) return;
+      
+      const dateData = dateMap.get(opt.suggested_date);
+      if (!dateData) return;
+
+      dateData.voters.add(vote.participant_id);
+      if (vote.availability === 'available') {
+        dateData.available += 1;
+      } else if (vote.availability === 'maybe') {
+        dateData.maybe += 1;
+      } else if (vote.availability === 'unavailable') {
+        dateData.unavailable += 1;
+      }
+    });
+
+    // Find date with highest availability
+    let bestDate: string | null = null;
+    let bestScore = -1;
+    let bestData: typeof dateMap extends Map<string, infer V> ? V : never | null = null;
+
+    dateMap.forEach((data, date) => {
+      // Score = available count (maybe counts as 0.5)
+      const score = data.available + (data.maybe * 0.5);
+      if (score > bestScore && data.voters.size > 0) {
+        bestScore = score;
+        bestDate = date;
+        bestData = data;
+      }
+    });
+
+    if (bestDate && bestData) {
+      const totalVoters = (bestData as any).voters.size;
+      const availableCount = (bestData as any).available;
+      const availabilityPercent = totalVoters > 0 
+        ? Math.round((availableCount / totalVoters) * 100)
+        : 0;
+
+      setTopDate({
+        date: bestDate,
+        availableCount,
+        totalVoters,
+        availabilityPercent,
+        isLongWeekend: (bestData as any).isLongWeekend,
+        holidayName: (bestData as any).holidayName,
+      });
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = parseISO(dateString);
+      return format(date, language === 'fr' ? 'EEEE d MMMM' : 'EEEE, MMMM d', {
+        locale: language === 'fr' ? fr : enUS,
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
   useEffect(() => {
     calculateScores();
+    calculateTopDate();
 
     const channel = supabase
       .channel('consensus-score')
@@ -156,6 +276,17 @@ export const ConsensusScore = ({ eventId, scenarios, totalParticipants }: Consen
         },
         () => {
           calculateScores();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'scenario_date_votes',
+        },
+        () => {
+          calculateTopDate();
         }
       )
       .subscribe();
@@ -231,6 +362,27 @@ export const ConsensusScore = ({ eventId, scenarios, totalParticipants }: Consen
               </div>
             </div>
           </Alert>
+        )}
+
+        {/* Top Date Display */}
+        {topDate && (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+            <Calendar className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
+                {t.aiConcierge?.pulse?.dateAvailability?.topDate || 'Top Date'}: {formatDate(topDate.date)}
+              </p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                {topDate.availabilityPercent}% {t.aiConcierge?.pulse?.dateAvailability?.groupAvailability || 'group availability'}
+                {topDate.isLongWeekend && (
+                  <span className="ml-2">🏖️ {topDate.holidayName || (t.aiConcierge?.pulse?.dateAvailability?.longWeekend || 'Long Weekend')}</span>
+                )}
+              </p>
+            </div>
+            <Badge variant="outline" className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700">
+              {topDate.availableCount}/{topDate.totalVoters}
+            </Badge>
+          </div>
         )}
 
         {/* Frontrunner with consensus score */}

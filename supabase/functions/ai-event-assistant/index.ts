@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders, type RateLimitConfig } from '../_shared/rate-limiter.ts';
+import { parseSeasonToDateRange, getBestWeekends, formatDateISO } from '../_shared/public-holidays.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -414,6 +415,39 @@ Make them genuinely distinct to help the group find a direction.`;
         scenarioGuidelines += `\n\nLOCATION IS LOCKED: ${constraints.location.value || constraints.location.displayLabel}. All scenarios must use this location.`;
       }
 
+      // Parse date range from prompt if date is flexible
+      let dateRangeInfo = '';
+      let suggestedWeekends: Array<{ date: Date; isLongWeekend: boolean; holidayName: string | null; holidayNameFr: string | null }> = [];
+      
+      if (!constraints.date || constraints.date.type !== 'fixed') {
+        // Try to parse season/period from the spark prompt
+        const dateRange = parseSeasonToDateRange(sanitizedSparkPrompt || '');
+        if (dateRange) {
+          suggestedWeekends = getBestWeekends(dateRange.start, dateRange.end, 3);
+          dateRangeInfo = `\n\nDATE FLEXIBILITY: The date is not locked. The user mentioned a period that translates to ${formatDateISO(dateRange.start)} to ${formatDateISO(dateRange.end)}.
+We have identified ${suggestedWeekends.length} optimal weekend dates for this period:
+${suggestedWeekends.map((w, i) => `${i + 1}. ${formatDateISO(w.date)} ${w.isLongWeekend ? `(LONG WEEKEND - ${w.holidayNameFr || w.holidayName})` : ''}`).join('\n')}
+
+IMPORTANT: Set date_is_flexible: true in your response. The suggested_date should be the first weekend option, but participants will vote on all 3 dates.`;
+        } else {
+          // Default to next 2 months if no period mentioned
+          const start = new Date();
+          const end = new Date();
+          end.setMonth(end.getMonth() + 2);
+          suggestedWeekends = getBestWeekends(start, end, 3);
+          dateRangeInfo = `\n\nDATE FLEXIBILITY: No specific date mentioned. Set date_is_flexible: true. Suggested optimal weekends for next 2 months:
+${suggestedWeekends.map((w, i) => `${i + 1}. ${formatDateISO(w.date)} ${w.isLongWeekend ? `(LONG WEEKEND - ${w.holidayNameFr || w.holidayName})` : ''}`).join('\n')}`;
+        }
+      }
+
+      // Store weekends in response for later use
+      const dateOptionsPayload = suggestedWeekends.map(w => ({
+        date: formatDateISO(w.date),
+        is_long_weekend: w.isLongWeekend,
+        holiday_name: w.holidayName,
+        holiday_name_fr: w.holidayNameFr
+      }));
+
       messages = [
         {
           role: 'system',
@@ -423,7 +457,7 @@ Each scenario should be complete and actionable - not vague options.
 Make them genuinely different in timing, vibe, or style.
 Today's date is ${new Date().toISOString().split('T')[0]}. Suggest dates in the near future.
 
-${scenarioGuidelines}`
+${scenarioGuidelines}${dateRangeInfo}`
         },
         {
           role: 'user',
@@ -450,7 +484,7 @@ ${scenarioGuidelines}`
                     suggested_date: { type: 'string', description: 'Suggested date in YYYY-MM-DD format' },
                     time_of_day: { type: 'string', enum: ['morning', 'afternoon', 'evening'] },
                     vibe: { type: 'string', enum: ['casual', 'active', 'relaxed', 'formal'] },
-                    // New context-aware fields
+                    date_is_flexible: { type: 'boolean', description: 'True if date is not locked and should show date picker' },
                     constraints_applied: {
                       type: 'object',
                       properties: {
@@ -500,6 +534,10 @@ ${scenarioGuidelines}`
         }
       }];
       tool_choice = { type: 'function', function: { name: 'create_scenarios' } };
+      
+      // Attach date options to the response for insertion
+      // We'll add this to the result after parsing
+      (globalThis as any).__dateOptionsPayload = dateOptionsPayload;
 
     } else if (action === 'regenerate-scenarios') {
       // Regenerate scenarios incorporating participant sparks
@@ -740,6 +778,13 @@ ${JSON.stringify(participantPreferences, null, 2)}`
 
     const result = JSON.parse(toolCall.function.arguments);
     console.log('Parsed result:', JSON.stringify(result));
+
+    // Attach date options if available (for generate-scenarios action)
+    const dateOptionsPayload = (globalThis as any).__dateOptionsPayload;
+    if (dateOptionsPayload && action === 'generate-scenarios') {
+      result.dateOptions = dateOptionsPayload;
+      delete (globalThis as any).__dateOptionsPayload;
+    }
 
     return new Response(
       JSON.stringify({ success: true, data: result }),
