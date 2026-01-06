@@ -38,13 +38,17 @@ export const useParticipant = (eventId: string | undefined) => {
 
   const getStorageKey = (eventId: string) => `participant_${eventId}`;
 
-  // Store participant session with expiration
+  // Store participant session with expiration (safe - handles localStorage errors)
   const storeParticipantSession = (eventId: string, participantId: string) => {
-    const session: StoredParticipantSession = {
-      participantId,
-      expiresAt: Date.now() + SESSION_DURATION_MS,
-    };
-    localStorage.setItem(getStorageKey(eventId), JSON.stringify(session));
+    try {
+      const session: StoredParticipantSession = {
+        participantId,
+        expiresAt: Date.now() + SESSION_DURATION_MS,
+      };
+      localStorage.setItem(getStorageKey(eventId), JSON.stringify(session));
+    } catch (err) {
+      console.warn('Could not save session to localStorage:', err);
+    }
   };
 
   // Get participant ID from storage, validating expiration
@@ -122,13 +126,16 @@ export const useParticipant = (eventId: string | undefined) => {
       const storedId = getStoredParticipantId(eventId);
       
       if (storedId) {
-        // Verify participant still exists in database
-        const { data: participant } = await supabase
-          .from('participants')
-          .select('id, name, email, user_id, is_organizer')
-          .eq('id', storedId)
-          .eq('event_id', eventId)
-          .single();
+        // Use SECURITY DEFINER function to restore session (works for anon users)
+        const { data, error } = await supabase.rpc('get_participant_by_id', {
+          p_participant_id: storedId,
+        });
+
+        if (error) {
+          console.warn('Error restoring participant session:', error);
+        }
+
+        const participant = Array.isArray(data) ? data[0] : data;
 
         if (participant) {
           setCurrentParticipant(participant);
@@ -158,29 +165,36 @@ export const useParticipant = (eventId: string | undefined) => {
   const joinEvent = async (name: string, email?: string) => {
     if (!eventId) return null;
 
-    try {
-      // Use the SECURITY DEFINER function - works for both auth and anon users
-      const { data, error } = await supabase.rpc('join_event_as_participant', {
-        p_event_id: eventId,
-        p_name: name.trim(),
-        p_email: email?.trim() || null,
-      });
+    console.log('[joinEvent] Starting join for event:', eventId);
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('[joinEvent] User authenticated:', !!user);
 
-      if (error) throw error;
+    const { data, error } = await supabase.rpc('join_event_as_participant', {
+      p_event_id: eventId,
+      p_name: name.trim(),
+      p_email: email?.trim() || null,
+    });
 
-      // RPC returns an array, get the first row
-      const participant = Array.isArray(data) ? data[0] : data;
-
-      if (participant) {
-        setCurrentParticipant(participant);
-        storeParticipantSession(eventId, participant.id);
-      }
-
-      return participant;
-    } catch (err) {
-      console.error('Error joining event:', err);
-      throw err;
+    if (error) {
+      console.error('[joinEvent] RPC error:', error);
+      throw new Error(error.message || 'Failed to join event');
     }
+
+    console.log('[joinEvent] RPC response:', data);
+
+    // RPC returns an array, get the first row
+    const participant = Array.isArray(data) ? data[0] : data;
+
+    if (!participant) {
+      console.error('[joinEvent] No participant returned from RPC');
+      throw new Error('Failed to create participant');
+    }
+
+    setCurrentParticipant(participant);
+    storeParticipantSession(eventId, participant.id);
+
+    return participant;
   };
 
   // Update participant location (for fair_spot)
