@@ -46,7 +46,17 @@ export interface LocationVote {
   vote: 'yes' | 'no' | 'maybe';
 }
 
+// Public participant data (excludes PII like email, location)
 export interface Participant {
+  id: string;
+  event_id: string | null;
+  name: string | null;
+  is_organizer: boolean | null;
+  created_at: string | null;
+}
+
+// Full participant data with location (for authenticated participants only)
+export interface FullParticipant {
   id: string;
   event_id: string;
   name: string;
@@ -55,7 +65,8 @@ export interface Participant {
   is_organizer: boolean;
   location_lat: number | null;
   location_lng: number | null;
-  transport_mode: 'car' | 'public_transport' | 'bike' | 'walk' | null;
+  transport_mode: 'car' | 'public_transit' | 'bike' | 'walk' | null;
+  created_at: string;
 }
 
 export interface Event {
@@ -143,7 +154,7 @@ export const useEventData = (slugOrId: string | undefined) => {
         supabase.from('date_votes').select('*').in('date_option_id', 
           (await supabase.from('date_options').select('id').eq('event_id', eventData.id)).data?.map(d => d.id) || []
         ),
-        supabase.from('participants').select('*').eq('event_id', eventData.id),
+        supabase.from('participants_public').select('*').eq('event_id', eventData.id),
         supabase.from('activities').select('*').eq('event_id', eventData.id),
         supabase.from('activity_votes').select('*').in('activity_id',
           (await supabase.from('activities').select('id').eq('event_id', eventData.id)).data?.map(a => a.id) || []

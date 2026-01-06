@@ -6,15 +6,14 @@ import { Check, X, HelpCircle, Plus, MapPin, Car, Train, Bike, Footprints, Edit2
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { LocationInput } from './LocationInput';
 import { FairSpotMap } from './FairSpotMap';
-import type { Event, LocationSuggestion, LocationVote, Participant } from '@/hooks/useEventData';
+import type { Event, LocationSuggestion, LocationVote, Participant, FullParticipant } from '@/hooks/useEventData';
 
 const locationSchema = z.object({
   name: z.string().min(1, 'Location name is required').max(100),
@@ -23,7 +22,7 @@ const locationSchema = z.object({
 
 const participantLocationSchema = z.object({
   location: z.string().min(1, 'Location is required').max(200),
-  transportMode: z.enum(['car', 'public_transport', 'bike', 'walk']),
+  transportMode: z.enum(['car', 'public_transit', 'bike', 'walk']),
 });
 
 type LocationFormValues = z.infer<typeof locationSchema>;
@@ -53,6 +52,8 @@ export const LocationSection = ({
   const [isAdding, setIsAdding] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voting, setVoting] = useState<string | null>(null);
+  const [currentParticipantFull, setCurrentParticipantFull] = useState<FullParticipant | null>(null);
+  const [participantsWithLocation, setParticipantsWithLocation] = useState<FullParticipant[]>([]);
 
   const form = useForm<LocationFormValues>({
     resolver: zodResolver(locationSchema),
@@ -69,6 +70,47 @@ export const LocationSection = ({
       transportMode: 'car',
     },
   });
+
+  // Fetch current participant's full data (including location) - RLS protected
+  useEffect(() => {
+    const fetchCurrentParticipantData = async () => {
+      if (!participantId || !event.id) return;
+      
+      const { data, error } = await supabase
+        .from('participants')
+        .select('id, event_id, name, is_organizer, location_lat, location_lng, transport_mode, created_at, email, user_id')
+        .eq('id', participantId)
+        .single();
+
+      if (!error && data) {
+        setCurrentParticipantFull(data as FullParticipant);
+      }
+    };
+
+    fetchCurrentParticipantData();
+  }, [participantId, event.id, participants]);
+
+  // Fetch all participants with location for fair spot calculation
+  useEffect(() => {
+    const fetchLocationData = async () => {
+      if (!event.id) return;
+      
+      const { data, error } = await supabase
+        .from('participants')
+        .select('id, event_id, name, is_organizer, location_lat, location_lng, transport_mode, created_at')
+        .eq('event_id', event.id)
+        .not('location_lat', 'is', null)
+        .not('location_lng', 'is', null);
+
+      if (!error && data) {
+        setParticipantsWithLocation(data as FullParticipant[]);
+      }
+    };
+
+    if (event.location_type === 'fair_spot') {
+      fetchLocationData();
+    }
+  }, [event.id, event.location_type, participants]);
 
   const getVoteCounts = (locationId: string) => {
     const votes = locationVotes.filter(v => v.location_suggestion_id === locationId);
@@ -193,7 +235,7 @@ export const LocationSection = ({
   const getTransportIcon = (mode: string) => {
     switch (mode) {
       case 'car': return <Car className="h-4 w-4" />;
-      case 'public_transport': return <Train className="h-4 w-4" />;
+      case 'public_transit': return <Train className="h-4 w-4" />;
       case 'bike': return <Bike className="h-4 w-4" />;
       case 'walk': return <Footprints className="h-4 w-4" />;
       default: return <Car className="h-4 w-4" />;
@@ -214,9 +256,6 @@ export const LocationSection = ({
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [fairSpotAddress, setFairSpotAddress] = useState<string | null>(null);
 
-  // Calculate fair spot and reverse geocode
-  const participantsWithLocation = participants.filter(p => p.location_lat != null && p.location_lng != null);
-  
   // Fetch fair spot address when we have 2+ participants with location
   const fetchFairSpotAddress = useCallback(async () => {
     if (participantsWithLocation.length < 2) {
@@ -227,7 +266,7 @@ export const LocationSection = ({
     // Calculate weighted centroid
     const TRANSPORT_WEIGHTS: Record<string, number> = {
       car: 1.0,
-      public_transport: 1.2,
+      public_transit: 1.2,
       bike: 1.5,
       walk: 2.0,
     };
@@ -270,6 +309,17 @@ export const LocationSection = ({
     try {
       await onUpdateLocation(lat, lng, transportMode);
       setIsEditingLocation(false);
+      // Refresh the current participant data
+      if (participantId) {
+        const { data } = await supabase
+          .from('participants')
+          .select('id, event_id, name, is_organizer, location_lat, location_lng, transport_mode, created_at, email, user_id')
+          .eq('id', participantId)
+          .single();
+        if (data) {
+          setCurrentParticipantFull(data as FullParticipant);
+        }
+      }
       toast({
         title: t.eventPage.location.locationSaved,
       });
@@ -284,8 +334,7 @@ export const LocationSection = ({
 
   // Render fair_spot mode
   if (event.location_type === 'fair_spot') {
-    const currentParticipant = participants.find(p => p.id === participantId);
-    const hasLocation = currentParticipant?.location_lat && currentParticipant?.location_lng;
+    const hasLocation = currentParticipantFull?.location_lat && currentParticipantFull?.location_lng;
 
     return (
       <Card>
@@ -304,7 +353,7 @@ export const LocationSection = ({
             <div className="p-4 rounded-lg border bg-muted/50">
               <LocationInput
                 onConfirm={handleLocationConfirm}
-                initialTransportMode={currentParticipant?.transport_mode || 'car'}
+                initialTransportMode={currentParticipantFull?.transport_mode || 'car'}
               />
             </div>
           )}
@@ -335,7 +384,7 @@ export const LocationSection = ({
               <LocationInput
                 onConfirm={handleLocationConfirm}
                 onCancel={() => setIsEditingLocation(false)}
-                initialTransportMode={currentParticipant?.transport_mode || 'car'}
+                initialTransportMode={currentParticipantFull?.transport_mode || 'car'}
               />
             </div>
           )}
@@ -343,6 +392,7 @@ export const LocationSection = ({
           {/* Fair Spot Map */}
           <FairSpotMap 
             participants={participants}
+            eventId={event.id}
             fairSpotAddress={fairSpotAddress}
           />
         </CardContent>
