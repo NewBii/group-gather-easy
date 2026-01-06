@@ -58,6 +58,13 @@ export type Database = {
             foreignKeyName: "activities_suggested_by_fkey"
             columns: ["suggested_by"]
             isOneToOne: false
+            referencedRelation: "participants_masked"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
             referencedRelation: "participants_public"
             referencedColumns: ["id"]
           },
@@ -98,6 +105,13 @@ export type Database = {
             columns: ["participant_id"]
             isOneToOne: false
             referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants_masked"
             referencedColumns: ["id"]
           },
           {
@@ -232,6 +246,13 @@ export type Database = {
             foreignKeyName: "date_votes_participant_id_fkey"
             columns: ["participant_id"]
             isOneToOne: false
+            referencedRelation: "participants_masked"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "date_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
             referencedRelation: "participants_public"
             referencedColumns: ["id"]
           },
@@ -274,6 +295,13 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "participants_masked"
             referencedColumns: ["id"]
           },
           {
@@ -543,6 +571,13 @@ export type Database = {
             foreignKeyName: "location_suggestions_suggested_by_fkey"
             columns: ["suggested_by"]
             isOneToOne: false
+            referencedRelation: "participants_masked"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_suggestions_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
             referencedRelation: "participants_public"
             referencedColumns: ["id"]
           },
@@ -583,6 +618,13 @@ export type Database = {
             columns: ["participant_id"]
             isOneToOne: false
             referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants_masked"
             referencedColumns: ["id"]
           },
           {
@@ -727,6 +769,13 @@ export type Database = {
             foreignKeyName: "scenario_votes_participant_id_fkey"
             columns: ["participant_id"]
             isOneToOne: false
+            referencedRelation: "participants_masked"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scenario_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
             referencedRelation: "participants_public"
             referencedColumns: ["id"]
           },
@@ -762,6 +811,56 @@ export type Database = {
       }
     }
     Views: {
+      participants_masked: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          event_id: string | null
+          id: string | null
+          is_organizer: boolean | null
+          location_lat: number | null
+          location_lng: number | null
+          name: string | null
+          transport_mode: Database["public"]["Enums"]["transport_mode"] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: never
+          event_id?: string | null
+          id?: string | null
+          is_organizer?: boolean | null
+          location_lat?: number | null
+          location_lng?: number | null
+          name?: string | null
+          transport_mode?: Database["public"]["Enums"]["transport_mode"] | null
+          updated_at?: string | null
+          user_id?: never
+        }
+        Update: {
+          created_at?: string | null
+          email?: never
+          event_id?: string | null
+          id?: string | null
+          is_organizer?: boolean | null
+          location_lat?: number | null
+          location_lng?: number | null
+          name?: string | null
+          transport_mode?: Database["public"]["Enums"]["transport_mode"] | null
+          updated_at?: string | null
+          user_id?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participants_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participants_public: {
         Row: {
           created_at: string | null
