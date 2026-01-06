@@ -45,10 +45,12 @@ export const ParticipantJoinForm = ({ eventSlug, onJoin, currentParticipant }: P
       toast({
         title: t.eventPage.join.success,
       });
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error joining event:', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
       toast({
         title: t.eventPage.join.error,
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {

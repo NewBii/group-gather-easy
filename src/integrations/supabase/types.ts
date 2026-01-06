@@ -716,6 +716,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_participant_by_id: {
+        Args: { p_participant_id: string }
+        Returns: {
+          email: string
+          id: string
+          is_organizer: boolean
+          name: string
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
