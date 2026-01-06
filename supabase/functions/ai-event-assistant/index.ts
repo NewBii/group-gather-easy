@@ -16,11 +16,20 @@ interface Message {
 const MAX_SPARK_PROMPT_LENGTH = 500;
 const MAX_PREFERENCES_LENGTH = 10000;
 
-// Rate limit: 10 requests per hour per user
+// Rate limit: 10 requests per hour per authenticated user
 const AI_RATE_LIMIT_CONFIG: RateLimitConfig = {
   windowMs: 60 * 60 * 1000,
   maxRequests: 10,
 };
+
+// Stricter rate limit for anonymous users (IP-based)
+const ANON_RATE_LIMIT_CONFIG: RateLimitConfig = {
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 5,
+};
+
+// Actions that can be performed anonymously (no auth required)
+const PUBLIC_ACTIONS = ['analyze-context', 'generate-draft'];
 
 const sanitizeInput = (input: string): string => {
   if (typeof input !== 'string') return '';
@@ -65,37 +74,69 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('Missing Authorization header');
-      return new Response(
-        JSON.stringify({ error: 'Authentication required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
+    // Extract client IP for anonymous rate limiting
+    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                     req.headers.get('x-real-ip') || 
+                     'unknown';
 
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      console.error('Authentication failed:', authError?.message);
+    // Parse body first to determine action
+    const body = await req.json();
+    const { action, sparkPrompt, eventId, participantPreferences } = body;
+
+    const validActions = ['generate-draft', 'generate-scenarios', 'synthesize-winner', 'analyze-context'];
+    if (!validActions.includes(action)) {
       return new Response(
-        JSON.stringify({ error: 'Invalid authentication' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Invalid action' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Authenticated user: ${user.id}`);
+    // Determine if this action can be performed anonymously
+    const isPublicAction = PUBLIC_ACTIONS.includes(action);
+    
+    // Create Supabase client (with or without auth)
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: authHeader ? { Authorization: authHeader } : {} }
+    });
 
-    const rateLimitResult = checkRateLimit(`ai-assistant:${user.id}`, AI_RATE_LIMIT_CONFIG);
+    // Try to authenticate if header is present
+    let userId: string | null = null;
+    if (authHeader) {
+      const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+      if (!authError && user) {
+        userId = user.id;
+        console.log(`Authenticated user: ${userId}`);
+      }
+    }
+
+    // For non-public actions, require authentication
+    if (!isPublicAction && !userId) {
+      // Special case: generate-scenarios can be anonymous if the event was created anonymously
+      if (action === 'generate-scenarios' && eventId) {
+        // We'll check this after validating the event exists
+      } else if (action === 'synthesize-winner') {
+        console.error('synthesize-winner requires authentication');
+        return new Response(
+          JSON.stringify({ error: 'Authentication required for this action' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Rate limiting: use userId if authenticated, otherwise use IP
+    const rateLimitKey = userId 
+      ? `ai-assistant:${userId}` 
+      : `ai-assistant:anon:${clientIP}`;
+    const rateLimitConfig = userId ? AI_RATE_LIMIT_CONFIG : ANON_RATE_LIMIT_CONFIG;
+    
+    const rateLimitResult = checkRateLimit(rateLimitKey, rateLimitConfig);
     const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
     
     if (!rateLimitResult.allowed) {
-      console.warn(`Rate limit exceeded for user: ${user.id}`);
+      console.warn(`Rate limit exceeded for: ${rateLimitKey}`);
       return new Response(
         JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
         { status: 429, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
@@ -108,18 +149,7 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const body = await req.json();
-    const { action, sparkPrompt, eventId, participantPreferences } = body;
-
-    const validActions = ['generate-draft', 'generate-scenarios', 'synthesize-winner', 'analyze-context'];
-    if (!validActions.includes(action)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid action' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`AI Event Assistant - Action: ${action}, EventId: ${eventId}, User: ${user.id}`);
+    console.log(`AI Event Assistant - Action: ${action}, EventId: ${eventId}, User: ${userId || 'anonymous'}, IP: ${clientIP}`);
 
     let sanitizedSparkPrompt: string | undefined;
     if (action === 'generate-draft' || action === 'generate-scenarios' || action === 'analyze-context') {
@@ -143,8 +173,15 @@ serve(async (req) => {
       }
     }
 
+    // Event authorization check
     if (eventId) {
-      const { data: event, error: eventError } = await supabaseClient
+      // Use service role for anonymous event lookups
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const lookupClient = serviceRoleKey 
+        ? createClient(supabaseUrl, serviceRoleKey)
+        : supabaseClient;
+      
+      const { data: event, error: eventError } = await lookupClient
         .from('events')
         .select('id, created_by')
         .eq('id', eventId)
@@ -157,20 +194,34 @@ serve(async (req) => {
         );
       }
 
-      const isCreator = event.created_by === user.id;
-      if (!isCreator) {
-        const { data: participant } = await supabaseClient
-          .from('participants')
-          .select('id')
-          .eq('event_id', eventId)
-          .eq('user_id', user.id)
-          .single();
-
-        if (!participant) {
+      // For generate-scenarios: allow if event was created anonymously
+      if (action === 'generate-scenarios' && !userId) {
+        if (event.created_by !== null) {
+          // Event has an owner, require authentication
           return new Response(
-            JSON.stringify({ error: 'You are not authorized to access this event' }),
-            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: 'Authentication required for this event' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
+        }
+        // Event was created anonymously, allow the request
+        console.log(`Allowing anonymous generate-scenarios for anonymous event: ${eventId}`);
+      } else if (userId) {
+        // User is authenticated, check authorization
+        const isCreator = event.created_by === userId;
+        if (!isCreator) {
+          const { data: participant } = await supabaseClient
+            .from('participants')
+            .select('id')
+            .eq('event_id', eventId)
+            .eq('user_id', userId)
+            .single();
+
+          if (!participant) {
+            return new Response(
+              JSON.stringify({ error: 'You are not authorized to access this event' }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
         }
       }
     }
