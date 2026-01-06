@@ -54,6 +54,13 @@ export type Database = {
             referencedRelation: "participants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "activities_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "participants_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       activity_votes: {
@@ -91,6 +98,13 @@ export type Database = {
             columns: ["participant_id"]
             isOneToOne: false
             referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants_public"
             referencedColumns: ["id"]
           },
         ]
@@ -214,6 +228,13 @@ export type Database = {
             referencedRelation: "participants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "date_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       event_tasks: {
@@ -253,6 +274,13 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "participants_public"
             referencedColumns: ["id"]
           },
           {
@@ -511,6 +539,13 @@ export type Database = {
             referencedRelation: "participants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "location_suggestions_suggested_by_fkey"
+            columns: ["suggested_by"]
+            isOneToOne: false
+            referencedRelation: "participants_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       location_votes: {
@@ -548,6 +583,13 @@ export type Database = {
             columns: ["participant_id"]
             isOneToOne: false
             referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants_public"
             referencedColumns: ["id"]
           },
         ]
@@ -682,6 +724,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "scenario_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "scenario_votes_scenario_id_fkey"
             columns: ["scenario_id"]
             isOneToOne: false
@@ -713,7 +762,38 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      participants_public: {
+        Row: {
+          created_at: string | null
+          event_id: string | null
+          id: string | null
+          is_organizer: boolean | null
+          name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_id?: string | null
+          id?: string | null
+          is_organizer?: boolean | null
+          name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string | null
+          id?: string | null
+          is_organizer?: boolean | null
+          name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participants_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_participant_by_id: {
