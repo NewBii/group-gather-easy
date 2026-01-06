@@ -23,6 +23,10 @@ interface AIConciergeTranslations {
   pulse: {
     title: string;
     subtitle: string;
+    starterTitle: string;
+    starterSubtitle: string;
+    vetoWarning: string;
+    vetoWarningDescription: string;
     rankLabel: string;
     dealbreaker: string;
     momentum: {
@@ -837,6 +841,10 @@ export const translations: Record<Language, Translations> = {
       pulse: {
         title: 'Choisissez votre préférence',
         subtitle: 'Classez ces options et marquez les impossibilités',
+        starterTitle: 'Quelle direction vous parle ?',
+        starterSubtitle: 'Ce sont des pistes de départ pour aider le groupe à trouver sa direction. Classez-les ou refusez ce qui ne fonctionne pas !',
+        vetoWarning: 'Votre veto compte !',
+        vetoWarningDescription: 'Utilisez-le judicieusement - les options avec des vetos sont fortement pénalisées. Nous cherchons quelque chose qui convient à tout le monde.',
         rankLabel: 'Votre classement',
         dealbreaker: 'Ça ne marche pas pour moi',
         momentum: {
@@ -1318,6 +1326,10 @@ export const translations: Record<Language, Translations> = {
       pulse: {
         title: 'Choose Your Preference',
         subtitle: 'Rank these options and mark any dealbreakers',
+        starterTitle: 'Which Direction Feels Right?',
+        starterSubtitle: 'These are starter concepts to help the group find direction. Rank them or veto what doesn\'t work!',
+        vetoWarning: 'Your veto matters!',
+        vetoWarningDescription: 'Use it wisely - options with vetoes are heavily penalized. We\'re looking for something that works for everyone.',
         rankLabel: 'Your ranking',
         dealbreaker: "This doesn't work for me",
         momentum: {

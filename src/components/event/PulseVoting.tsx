@@ -209,13 +209,13 @@ export const PulseVoting = ({
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold text-foreground">
           {isStarterConcepts 
-            ? 'Which Direction Feels Right?' 
-            : t.aiConcierge?.pulse?.title || 'Choose Your Preference'}
+            ? (t.aiConcierge?.pulse?.starterTitle || 'Which Direction Feels Right?')
+            : (t.aiConcierge?.pulse?.title || 'Choose Your Preference')}
         </h2>
         <p className="text-muted-foreground">
           {isStarterConcepts
-            ? 'These are starter concepts to help the group find direction. Rank them or veto what doesn\'t work!'
-            : t.aiConcierge?.pulse?.subtitle || 'Rank these options and veto any dealbreakers'}
+            ? (t.aiConcierge?.pulse?.starterSubtitle || 'These are starter concepts to help the group find direction. Rank them or veto what doesn\'t work!')
+            : (t.aiConcierge?.pulse?.subtitle || 'Rank these options and veto any dealbreakers')}
         </p>
       </div>
 
@@ -251,7 +251,7 @@ export const PulseVoting = ({
         <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-800 dark:text-amber-200">
-            <strong>Your veto matters!</strong> Use it wisely - options with vetoes are heavily penalized. We're looking for something that works for everyone.
+            <strong>{t.aiConcierge?.pulse?.vetoWarning || 'Your veto matters!'}</strong> {t.aiConcierge?.pulse?.vetoWarningDescription || 'Use it wisely - options with vetoes are heavily penalized. We\'re looking for something that works for everyone.'}
           </AlertDescription>
         </Alert>
       )}
