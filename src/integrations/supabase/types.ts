@@ -719,6 +719,107 @@ export type Database = {
         }
         Relationships: []
       }
+      scenario_date_options: {
+        Row: {
+          created_at: string | null
+          holiday_name: string | null
+          id: string
+          is_long_weekend: boolean | null
+          scenario_id: string
+          suggested_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          holiday_name?: string | null
+          id?: string
+          is_long_weekend?: boolean | null
+          scenario_id: string
+          suggested_date: string
+        }
+        Update: {
+          created_at?: string | null
+          holiday_name?: string | null
+          id?: string
+          is_long_weekend?: boolean | null
+          scenario_id?: string
+          suggested_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_date_options_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "ai_scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scenario_date_votes: {
+        Row: {
+          availability: string
+          created_at: string | null
+          date_option_id: string
+          id: string
+          participant_id: string
+          scenario_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          availability: string
+          created_at?: string | null
+          date_option_id: string
+          id?: string
+          participant_id: string
+          scenario_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          availability?: string
+          created_at?: string | null
+          date_option_id?: string
+          id?: string
+          participant_id?: string
+          scenario_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_date_votes_date_option_id_fkey"
+            columns: ["date_option_id"]
+            isOneToOne: false
+            referencedRelation: "scenario_date_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scenario_date_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scenario_date_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants_masked"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scenario_date_votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scenario_date_votes_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "ai_scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scenario_votes: {
         Row: {
           created_at: string | null

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { ConstraintBadge, SpecialTraitBadge, MidpointInfo } from './ConstraintBadge';
+import { DateAvailabilityPicker, type DateOption, type DateVote } from './DateAvailabilityPicker';
 
 interface SpecialTrait {
   type: 'kid_friendly' | 'accessibility' | 'dietary' | 'budget' | 'midpoint' | 'nightlife' | 'outdoor' | 'indoor';
@@ -37,6 +38,7 @@ interface ScenarioCardProps {
       constraints_applied?: ConstraintsApplied;
       special_traits?: SpecialTrait[];
       midpoint_info?: MidpointInfoData;
+      date_is_flexible?: boolean;
     } | null;
   };
   rank?: number;
@@ -45,6 +47,10 @@ interface ScenarioCardProps {
   onDealbreakerToggle?: () => void;
   isVotingEnabled?: boolean;
   showRanking?: boolean;
+  dateOptions?: DateOption[];
+  dateVotes?: DateVote[];
+  participantId?: string;
+  onDateVoteChange?: () => void;
 }
 
 const timeIcons = {
@@ -68,6 +74,10 @@ export const ScenarioCard = ({
   onDealbreakerToggle,
   isVotingEnabled = true,
   showRanking = true,
+  dateOptions = [],
+  dateVotes = [],
+  participantId,
+  onDateVoteChange,
 }: ScenarioCardProps) => {
   const { language } = useLanguage();
   const time = scenario.suggested_time_of_day as keyof typeof timeIcons;
@@ -84,14 +94,19 @@ export const ScenarioCard = ({
     constraints_applied?: ConstraintsApplied;
     special_traits?: SpecialTrait[];
     midpoint_info?: MidpointInfoData;
+    date_is_flexible?: boolean;
   } | null;
   
   const constraintsApplied = metadata?.constraints_applied;
   const specialTraits = metadata?.special_traits || [];
   const midpointInfo = metadata?.midpoint_info;
+  const dateIsFlexible = metadata?.date_is_flexible;
 
   const isDateLocked = constraintsApplied?.date_locked;
   const isTimeLocked = constraintsApplied?.time_locked;
+
+  // Determine if we should show date picker vs static badge
+  const showDatePicker = !isDateLocked && dateIsFlexible && dateOptions.length > 0;
 
   return (
     <Card
@@ -100,6 +115,8 @@ export const ScenarioCard = ({
         isDealbreaker && 'opacity-60 border-destructive bg-destructive/5',
         rank === 1 && !isDealbreaker && 'ring-2 ring-primary border-primary',
         rank === 2 && !isDealbreaker && 'ring-1 ring-primary/50',
+        // Slightly taller when showing date picker
+        showDatePicker && 'min-h-[380px]'
       )}
     >
       {/* Rank badge */}
@@ -132,38 +149,73 @@ export const ScenarioCard = ({
           <p className="text-sm text-muted-foreground">{scenario.description}</p>
         )}
 
-        {/* Date/Time/Vibe badges with lock indicators */}
-        <div className="flex flex-wrap gap-2">
-          {formattedDate && (
-            <Badge 
-              variant={isDateLocked ? "default" : "secondary"} 
-              className={cn(
-                "capitalize gap-1",
-                isDateLocked && "bg-primary text-primary-foreground"
-              )}
-            >
-              {isDateLocked && <Lock className="h-3 w-3" />}
-              📅 {formattedDate}
-            </Badge>
-          )}
-          {TimeIcon && (
-            <Badge 
-              variant={isTimeLocked ? "default" : "secondary"} 
-              className={cn(
-                timeIcons[time].color,
-                isTimeLocked && "bg-primary text-primary-foreground"
-              )}
-            >
-              {isTimeLocked && <Lock className="h-3 w-3 mr-1" />}
-              {timeIcons[time].label}
-            </Badge>
-          )}
-          {VibeConfig && (
-            <Badge className={VibeConfig.color}>
-              {VibeConfig.label}
-            </Badge>
-          )}
-        </div>
+        {/* Date section - either static badge or interactive picker */}
+        {showDatePicker ? (
+          <DateAvailabilityPicker
+            dateOptions={dateOptions}
+            scenarioId={scenario.id}
+            participantId={participantId}
+            existingVotes={dateVotes}
+            onVoteChange={onDateVoteChange}
+            disabled={!isVotingEnabled}
+          />
+        ) : (
+          /* Static Date/Time/Vibe badges with lock indicators */
+          <div className="flex flex-wrap gap-2">
+            {formattedDate && (
+              <Badge 
+                variant={isDateLocked ? "default" : "secondary"} 
+                className={cn(
+                  "capitalize gap-1",
+                  isDateLocked && "bg-primary text-primary-foreground"
+                )}
+              >
+                {isDateLocked && <Lock className="h-3 w-3" />}
+                📅 {formattedDate}
+              </Badge>
+            )}
+            {TimeIcon && (
+              <Badge 
+                variant={isTimeLocked ? "default" : "secondary"} 
+                className={cn(
+                  timeIcons[time].color,
+                  isTimeLocked && "bg-primary text-primary-foreground"
+                )}
+              >
+                {isTimeLocked && <Lock className="h-3 w-3 mr-1" />}
+                {timeIcons[time].label}
+              </Badge>
+            )}
+            {VibeConfig && (
+              <Badge className={VibeConfig.color}>
+                {VibeConfig.label}
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* Time/Vibe badges when date picker is shown */}
+        {showDatePicker && (TimeIcon || VibeConfig) && (
+          <div className="flex flex-wrap gap-2">
+            {TimeIcon && (
+              <Badge 
+                variant={isTimeLocked ? "default" : "secondary"} 
+                className={cn(
+                  timeIcons[time].color,
+                  isTimeLocked && "bg-primary text-primary-foreground"
+                )}
+              >
+                {isTimeLocked && <Lock className="h-3 w-3 mr-1" />}
+                {timeIcons[time].label}
+              </Badge>
+            )}
+            {VibeConfig && (
+              <Badge className={VibeConfig.color}>
+                {VibeConfig.label}
+              </Badge>
+            )}
+          </div>
+        )}
 
         {/* Special traits (kid-friendly, accessibility, etc.) */}
         {specialTraits.length > 0 && (
