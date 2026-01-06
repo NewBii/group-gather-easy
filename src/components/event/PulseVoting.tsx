@@ -8,6 +8,7 @@ import { ConstraintBadge } from './ConstraintBadge';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import type { DateOption, DateVote } from './DateAvailabilityPicker';
 
 interface SpecialTrait {
   type: 'kid_friendly' | 'accessibility' | 'dietary' | 'budget' | 'midpoint' | 'nightlife' | 'outdoor' | 'indoor';
@@ -38,6 +39,7 @@ interface Scenario {
     constraints_applied?: ConstraintsApplied;
     special_traits?: SpecialTrait[];
     midpoint_info?: MidpointInfoData;
+    date_is_flexible?: boolean;
   } | null;
 }
 
@@ -69,6 +71,14 @@ interface VoteState {
   };
 }
 
+interface DateOptionsMap {
+  [scenarioId: string]: DateOption[];
+}
+
+interface DateVotesMap {
+  [scenarioId: string]: DateVote[];
+}
+
 export const PulseVoting = ({
   eventId,
   scenarios,
@@ -84,6 +94,84 @@ export const PulseVoting = ({
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [savedVotes, setSavedVotes] = useState<VoteState>({});
+  const [dateOptionsMap, setDateOptionsMap] = useState<DateOptionsMap>({});
+  const [dateVotesMap, setDateVotesMap] = useState<DateVotesMap>({});
+
+  // Load date options for scenarios
+  useEffect(() => {
+    const scenarioIds = scenarios.map(s => s.id);
+    if (scenarioIds.length === 0) return;
+
+    const loadDateOptions = async () => {
+      const { data } = await supabase
+        .from('scenario_date_options')
+        .select('*')
+        .in('scenario_id', scenarioIds);
+
+      if (data) {
+        const optionsMap: DateOptionsMap = {};
+        data.forEach((opt: any) => {
+          if (!optionsMap[opt.scenario_id]) {
+            optionsMap[opt.scenario_id] = [];
+          }
+          optionsMap[opt.scenario_id].push({
+            id: opt.id,
+            suggested_date: opt.suggested_date,
+            is_long_weekend: opt.is_long_weekend,
+            holiday_name: opt.holiday_name,
+          });
+        });
+        setDateOptionsMap(optionsMap);
+      }
+    };
+
+    loadDateOptions();
+  }, [scenarios]);
+
+  // Load date votes for participant
+  useEffect(() => {
+    if (!participantId) return;
+    const scenarioIds = scenarios.map(s => s.id);
+    if (scenarioIds.length === 0) return;
+
+    const loadDateVotes = async () => {
+      const { data } = await supabase
+        .from('scenario_date_votes')
+        .select('*')
+        .eq('participant_id', participantId)
+        .in('scenario_id', scenarioIds);
+
+      if (data) {
+        const votesMap: DateVotesMap = {};
+        data.forEach((vote: any) => {
+          if (!votesMap[vote.scenario_id]) {
+            votesMap[vote.scenario_id] = [];
+          }
+          votesMap[vote.scenario_id].push({
+            date_option_id: vote.date_option_id,
+            availability: vote.availability,
+          });
+        });
+        setDateVotesMap(votesMap);
+      }
+    };
+
+    loadDateVotes();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel('date-votes-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'scenario_date_votes' },
+        () => loadDateVotes()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [participantId, scenarios]);
 
   // Load existing votes
   useEffect(() => {
@@ -270,6 +358,10 @@ export const PulseVoting = ({
                 onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
                 isVotingEnabled={canVote}
                 showRanking={canVote}
+                dateOptions={dateOptionsMap[scenario.id] || []}
+                dateVotes={dateVotesMap[scenario.id] || []}
+                participantId={participantId}
+                onDateVoteChange={() => {}}
               />
             ))}
           </div>

@@ -35,6 +35,16 @@ interface AIConciergeTranslations {
       frontrunner: string;
     };
     finalize: string;
+    dateAvailability: {
+      title: string;
+      available: string;
+      maybe: string;
+      unavailable: string;
+      longWeekend: string;
+      tapToVote: string;
+      topDate: string;
+      groupAvailability: string;
+    };
   };
   lockdown: {
     badge: string;
@@ -853,6 +863,16 @@ export const translations: Record<Language, Translations> = {
           frontrunner: '{option} est en tête !',
         },
         finalize: 'Finaliser l\'événement',
+        dateAvailability: {
+          title: 'Choisissez vos disponibilités',
+          available: 'Je suis dispo',
+          maybe: 'Dispo mais pas idéal',
+          unavailable: 'Impossible pour moi',
+          longWeekend: 'Pont 🏖️',
+          tapToVote: 'Cliquez pour voter',
+          topDate: 'Meilleure date',
+          groupAvailability: 'du groupe disponible',
+        },
       },
       lockdown: {
         badge: 'Confirmé',
@@ -1338,6 +1358,16 @@ export const translations: Record<Language, Translations> = {
           frontrunner: '{option} is the frontrunner!',
         },
         finalize: 'Finalize Event',
+        dateAvailability: {
+          title: 'Choose your availability',
+          available: "I'm available",
+          maybe: 'Available but not ideal',
+          unavailable: 'Impossible for me',
+          longWeekend: 'Long Weekend 🏖️',
+          tapToVote: 'Tap to vote',
+          topDate: 'Top Date',
+          groupAvailability: 'group availability',
+        },
       },
       lockdown: {
         badge: 'Confirmed',
