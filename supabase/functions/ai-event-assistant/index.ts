@@ -246,10 +246,16 @@ serve(async (req) => {
 4. Special requirements (kids, accessibility, dietary restrictions)
 5. Participant origins if mentioned (cities people are coming from)
 6. Vibe/atmosphere hints (party, formal, casual, adventure)
+7. PRE-EXISTING ACCOMMODATION - Look for keywords like "staying at", "at my house", "already booked", "rented", hotel names, Airbnb mentions, or specific accommodation names
 
 Today's date is ${new Date().toISOString().split('T')[0]}.
 
-Analyze the prompt carefully. If someone says "dinner Friday" that's a FIXED date. If they say "sometime next month" that's FLEXIBLE.`
+Analyze the prompt carefully. If someone says "dinner Friday" that's a FIXED date. If they say "sometime next month" that's FLEXIBLE.
+
+ACCOMMODATION DETECTION:
+- If the organizer mentions ANY specific accommodation (hotel name, "my place", "already booked a cabin", "staying at...", Airbnb, etc.), set accommodation.isLocked = true
+- Extract the accommodation name/description if mentioned
+- If NO specific accommodation is mentioned, set accommodation.isLocked = false so dynamic suggestions can be shown`
         },
         {
           role: 'user',
@@ -300,6 +306,15 @@ Analyze the prompt carefully. If someone says "dinner Friday" that's a FIXED dat
                 },
                 required: ['date', 'location', 'time']
               },
+              accommodation: {
+                type: 'object',
+                properties: {
+                  isLocked: { type: 'boolean', description: 'True if organizer specified accommodation (staying at, already booked, my house, hotel name, Airbnb, etc.)' },
+                  lockedName: { type: 'string', description: 'Name of the pre-booked accommodation if mentioned' },
+                  lockedDescription: { type: 'string', description: 'Additional details about the accommodation' }
+                },
+                required: ['isLocked']
+              },
               specialRequirements: {
                 type: 'array',
                 items: {
@@ -327,7 +342,7 @@ Analyze the prompt carefully. If someone says "dinner Friday" that's a FIXED dat
               },
               suggestedDescription: { type: 'string', description: 'A brief event description' }
             },
-            required: ['eventTitle', 'eventType', 'constraints', 'specialRequirements', 'participantOrigins', 'vibeKeywords', 'isVague', 'suggestedDescription'],
+            required: ['eventTitle', 'eventType', 'constraints', 'accommodation', 'specialRequirements', 'participantOrigins', 'vibeKeywords', 'isVague', 'suggestedDescription'],
             additionalProperties: false
           }
         }
@@ -377,11 +392,24 @@ When suggesting dates, always suggest dates in the future (at least a few days f
       const isVague = contextAnalysis?.isVague || false;
       const constraints = contextAnalysis?.constraints || {};
       const vibeKeywords = contextAnalysis?.vibeKeywords || [];
+      const accommodation = contextAnalysis?.accommodation || { isLocked: false };
       
       let scenarioGuidelines = `Guidelines for great scenarios:
 - Option A: Often the "safe" or conventional choice
 - Option B: A more adventurous or different timing
 - Option C: A balanced alternative or unique twist`;
+
+      // Add accommodation guidelines
+      if (accommodation.isLocked) {
+        scenarioGuidelines += `\n\nACCOMMODATION IS LOCKED: The organizer has already arranged accommodation: "${accommodation.lockedName || 'Pre-arranged stay'}". 
+DO NOT suggest external stays or alternative accommodations. Simply reference their choice in scenarios if relevant.`;
+      } else if (contextAnalysis?.eventType === 'trip') {
+        scenarioGuidelines += `\n\nACCOMMODATION SUGGESTIONS: Since no accommodation is pre-booked, suggest an accommodation style for each scenario:
+- For Active/Adventure vibes: suggest 'eco-lodge' or 'camping'
+- For Relaxed vibes: suggest 'luxury-villa' or 'boutique-hotel'
+- For Casual vibes: suggest 'apartment'
+- For Formal vibes: suggest 'boutique-hotel'`;
+      }
 
       // Add kid-friendliness if kids are mentioned
       if (hasKids) {

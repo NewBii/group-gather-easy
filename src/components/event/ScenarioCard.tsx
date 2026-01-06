@@ -8,7 +8,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { ConstraintBadge, SpecialTraitBadge, MidpointInfo } from './ConstraintBadge';
 import { DateAvailabilityPicker, type DateOption, type DateVote } from './DateAvailabilityPicker';
 import { MatchedSparkBadge } from './MatchedSparkBadge';
-
+import { AccommodationCard, type AccommodationInfo } from './AccommodationCard';
 interface SpecialTrait {
   type: 'kid_friendly' | 'accessibility' | 'dietary' | 'budget' | 'midpoint' | 'nightlife' | 'outdoor' | 'indoor';
   label: string;
@@ -46,6 +46,7 @@ interface ScenarioCardProps {
       special_traits?: SpecialTrait[];
       midpoint_info?: MidpointInfoData;
       date_is_flexible?: boolean;
+      accommodation?: AccommodationInfo;
     } | null;
   };
   rank?: number;
@@ -104,12 +105,14 @@ export const ScenarioCard = ({
     special_traits?: SpecialTrait[];
     midpoint_info?: MidpointInfoData;
     date_is_flexible?: boolean;
+    accommodation?: AccommodationInfo;
   } | null;
   
   const constraintsApplied = metadata?.constraints_applied;
   const specialTraits = metadata?.special_traits || [];
   const midpointInfo = metadata?.midpoint_info;
   const dateIsFlexible = metadata?.date_is_flexible;
+  const accommodation = metadata?.accommodation;
 
   const isDateLocked = constraintsApplied?.date_locked;
   const isTimeLocked = constraintsApplied?.time_locked;
@@ -248,12 +251,20 @@ export const ScenarioCard = ({
           />
         )}
 
+        {/* Accommodation section */}
+        {accommodation && (
+          <AccommodationCard 
+            accommodation={accommodation}
+            vibe={vibe}
+          />
+        )}
+
         {/* Matched sparks badge - "I've been heard" visual */}
         {matchedSparks.length > 0 && (
           <MatchedSparkBadge matchedSparks={matchedSparks} />
         )}
 
-        {/* Ranking buttons */}
+        {/* Ranking buttons - fixed to bottom on mobile for thumb access */}
         {showRanking && isVotingEnabled && (
           <div className="space-y-3 pt-2 border-t">
             <div className="flex gap-2">
