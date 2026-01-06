@@ -15,7 +15,7 @@ import { Step2DateAndLocation } from '@/components/create-event/Step2DateAndLoca
 import { Step3HelpersWanted } from '@/components/create-event/Step3HelpersWanted';
 import { ModeSelector } from '@/components/create-event/ModeSelector';
 import { SparkPhase } from '@/components/create-event/SparkPhase';
-import { WaitingRoom } from '@/components/create-event/WaitingRoom';
+import { OrganizerDashboard } from '@/components/create-event/OrganizerDashboard';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { toast } from 'sonner';
@@ -276,15 +276,16 @@ const CreateEvent = () => {
     );
   }
 
-  // Show waiting room if AI event was created
+  // Show organizer dashboard with voting if AI event was created
   if (aiEventCreated) {
     return (
-      <div className="container py-12 md:py-16">
-        <div className="max-w-2xl mx-auto">
-          <WaitingRoom
+      <div className="container py-8 md:py-12">
+        <div className="max-w-6xl mx-auto">
+          <OrganizerDashboard
             eventId={aiEventCreated.id}
             eventSlug={aiEventCreated.slug}
             eventTitle={aiEventCreated.title}
+            userId={user?.id}
           />
         </div>
       </div>
