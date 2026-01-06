@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, Check, Mail, Users } from 'lucide-react';
+import { Copy, Check, Mail, Users, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -70,6 +70,11 @@ export const SharePanel = ({ eventId, eventSlug, eventTitle, compact = false }: 
     window.open(`mailto:?subject=${subject}&body=${body}`);
   };
 
+  const handleWhatsAppShare = () => {
+    const message = encodeURIComponent(`Hey! I'm organizing ${eventTitle || 'an event'} and would love for you to join.\n\nClick here to participate: ${shareUrl}`);
+    window.open(`https://wa.me/?text=${message}`, '_blank');
+  };
+
   if (compact) {
     return (
       <Card className="border-primary/30 bg-primary/5">
@@ -102,6 +107,10 @@ export const SharePanel = ({ eventId, eventSlug, eventTitle, compact = false }: 
               <Mail className="mr-1 h-3 w-3" />
               {t.eventCreated?.shareByEmail || 'Email'}
             </Button>
+            <Button variant="outline" size="sm" className="flex-1 text-xs bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-700 dark:text-green-400" onClick={handleWhatsAppShare}>
+              <MessageCircle className="mr-1 h-3 w-3" />
+              WhatsApp
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -130,14 +139,22 @@ export const SharePanel = ({ eventId, eventSlug, eventTitle, compact = false }: 
           </Button>
         </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={handleCopy}>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="flex-1 min-w-[100px]" onClick={handleCopy}>
             <Copy className="mr-2 h-4 w-4" />
             {t.eventCreated?.copyLink || 'Copy'}
           </Button>
-          <Button variant="outline" className="flex-1" onClick={handleEmailShare}>
+          <Button variant="outline" className="flex-1 min-w-[100px]" onClick={handleEmailShare}>
             <Mail className="mr-2 h-4 w-4" />
             {t.eventCreated?.shareByEmail || 'Email'}
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex-1 min-w-[100px] bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-700 dark:text-green-400" 
+            onClick={handleWhatsAppShare}
+          >
+            <MessageCircle className="mr-2 h-4 w-4" />
+            WhatsApp
           </Button>
         </div>
 
