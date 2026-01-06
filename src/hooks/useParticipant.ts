@@ -161,7 +161,7 @@ export const useParticipant = (eventId: string | undefined) => {
     }
   };
 
-  // Join event as participant using SECURITY DEFINER function
+  // Join event as participant using SECURITY DEFINER function (with retry)
   const joinEvent = async (name: string, email?: string) => {
     if (!eventId) return null;
 
@@ -170,31 +170,51 @@ export const useParticipant = (eventId: string | undefined) => {
     const { data: { user } } = await supabase.auth.getUser();
     console.log('[joinEvent] User authenticated:', !!user);
 
-    const { data, error } = await supabase.rpc('join_event_as_participant', {
-      p_event_id: eventId,
-      p_name: name.trim(),
-      p_email: email?.trim() || null,
-    });
+    // Retry logic for transient errors
+    const maxRetries = 2;
+    let lastError: Error | null = null;
 
-    if (error) {
-      console.error('[joinEvent] RPC error:', error);
-      throw new Error(error.message || 'Failed to join event');
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.log(`[joinEvent] Retry attempt ${attempt}...`);
+          await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+        }
+
+        const { data, error } = await supabase.rpc('join_event_as_participant', {
+          p_event_id: eventId,
+          p_name: name.trim(),
+          p_email: email?.trim() || null,
+        });
+
+        if (error) {
+          console.error(`[joinEvent] RPC error (attempt ${attempt + 1}):`, error);
+          lastError = new Error(error.message || 'Failed to join event');
+          continue;
+        }
+
+        console.log('[joinEvent] RPC response:', data);
+
+        // RPC returns an array, get the first row
+        const participant = Array.isArray(data) ? data[0] : data;
+
+        if (!participant) {
+          console.error('[joinEvent] No participant returned from RPC');
+          lastError = new Error('Failed to create participant');
+          continue;
+        }
+
+        setCurrentParticipant(participant);
+        storeParticipantSession(eventId, participant.id);
+
+        return participant;
+      } catch (err) {
+        console.error(`[joinEvent] Exception (attempt ${attempt + 1}):`, err);
+        lastError = err instanceof Error ? err : new Error('Unknown error joining event');
+      }
     }
 
-    console.log('[joinEvent] RPC response:', data);
-
-    // RPC returns an array, get the first row
-    const participant = Array.isArray(data) ? data[0] : data;
-
-    if (!participant) {
-      console.error('[joinEvent] No participant returned from RPC');
-      throw new Error('Failed to create participant');
-    }
-
-    setCurrentParticipant(participant);
-    storeParticipantSession(eventId, participant.id);
-
-    return participant;
+    throw lastError || new Error('Failed to join event after retries');
   };
 
   // Update participant location (for fair_spot)
