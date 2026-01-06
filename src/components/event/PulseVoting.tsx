@@ -7,8 +7,11 @@ import { ConsensusScore } from './ConsensusScore';
 import { ConstraintBadge } from './ConstraintBadge';
 import { ParticipantVoice } from './ParticipantVoice';
 import { GroupWishlist } from './GroupWishlist';
+import { StickyProgressBar } from './StickyProgressBar';
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import type { DateOption, DateVote } from './DateAvailabilityPicker';
 
@@ -106,6 +109,7 @@ export const PulseVoting = ({
 }: PulseVotingProps) => {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [votes, setVotes] = useState<VoteState>({});
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -114,6 +118,8 @@ export const PulseVoting = ({
   const [dateVotesMap, setDateVotesMap] = useState<DateVotesMap>({});
   const [scenarioSparksMap, setScenarioSparksMap] = useState<ScenarioSparksMap>({});
   const [sparksRefreshKey, setSparksRefreshKey] = useState(0);
+  const [votersCount, setVotersCount] = useState(0);
+  const [frontrunner, setFrontrunner] = useState<{ label: string; consensus: number } | null>(null);
 
   // Load date options for scenarios
   useEffect(() => {
@@ -398,28 +404,67 @@ export const PulseVoting = ({
         </Alert>
       )}
 
+      {/* Sticky progress bar on mobile */}
+      {isMobile && (
+        <StickyProgressBar
+          votersCount={votersCount}
+          totalParticipants={totalParticipants}
+          frontrunnerLabel={frontrunner?.label}
+          frontrunnerConsensus={frontrunner?.consensus}
+        />
+      )}
+
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Scenarios */}
+        {/* Scenarios - Carousel on mobile, grid on desktop */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-            {scenarios.map((scenario) => (
-              <ScenarioCard
-                key={scenario.id}
-                scenario={scenario}
-                rank={votes[scenario.id]?.rank ?? undefined}
-                isDealbreaker={votes[scenario.id]?.isDealbreaker}
-                onRankChange={(rank) => handleRankChange(scenario.id, rank)}
-                onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
-                isVotingEnabled={canVote}
-                showRanking={canVote}
-                dateOptions={dateOptionsMap[scenario.id] || []}
-                dateVotes={dateVotesMap[scenario.id] || []}
-                participantId={participantId}
-                onDateVoteChange={() => {}}
-                matchedSparks={scenarioSparksMap[scenario.id] || []}
-              />
-            ))}
-          </div>
+          {isMobile ? (
+            <Carousel className="w-full" opts={{ align: 'start', loop: false }}>
+              <CarouselContent className="-ml-2">
+                {scenarios.map((scenario) => (
+                  <CarouselItem key={scenario.id} className="pl-2 basis-[90%]">
+                    <ScenarioCard
+                      scenario={scenario}
+                      rank={votes[scenario.id]?.rank ?? undefined}
+                      isDealbreaker={votes[scenario.id]?.isDealbreaker}
+                      onRankChange={(rank) => handleRankChange(scenario.id, rank)}
+                      onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
+                      isVotingEnabled={canVote}
+                      showRanking={canVote}
+                      dateOptions={dateOptionsMap[scenario.id] || []}
+                      dateVotes={dateVotesMap[scenario.id] || []}
+                      participantId={participantId}
+                      onDateVoteChange={() => {}}
+                      matchedSparks={scenarioSparksMap[scenario.id] || []}
+                    />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <div className="flex justify-center gap-2 mt-4">
+                <CarouselPrevious className="static translate-y-0" />
+                <CarouselNext className="static translate-y-0" />
+              </div>
+            </Carousel>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              {scenarios.map((scenario) => (
+                <ScenarioCard
+                  key={scenario.id}
+                  scenario={scenario}
+                  rank={votes[scenario.id]?.rank ?? undefined}
+                  isDealbreaker={votes[scenario.id]?.isDealbreaker}
+                  onRankChange={(rank) => handleRankChange(scenario.id, rank)}
+                  onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
+                  isVotingEnabled={canVote}
+                  showRanking={canVote}
+                  dateOptions={dateOptionsMap[scenario.id] || []}
+                  dateVotes={dateVotesMap[scenario.id] || []}
+                  participantId={participantId}
+                  onDateVoteChange={() => {}}
+                  matchedSparks={scenarioSparksMap[scenario.id] || []}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Participant Voice input */}
           {canVote && (
