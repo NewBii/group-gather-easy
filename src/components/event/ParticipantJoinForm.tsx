@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link } from 'react-router-dom';
 import { UserPlus, LogIn } from 'lucide-react';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import type { CurrentParticipant } from '@/hooks/useParticipant';
 
 const joinSchema = z.object({
@@ -29,6 +31,10 @@ export const ParticipantJoinForm = ({ eventSlug, onJoin, currentParticipant }: P
   const { t } = useLanguage();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileStatus, setTurnstileStatus] = useState<'idle' | 'solved' | 'error'>('idle');
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
 
   const form = useForm<JoinFormValues>({
     resolver: zodResolver(joinSchema),
@@ -38,9 +44,68 @@ export const ParticipantJoinForm = ({ eventSlug, onJoin, currentParticipant }: P
     },
   });
 
+  // Fetch site key on mount
+  useEffect(() => {
+    const fetchSiteKey = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-turnstile-sitekey');
+        if (!error && data?.siteKey) {
+          setTurnstileSiteKey(data.siteKey);
+        }
+      } catch (err) {
+        console.error('Failed to fetch Turnstile site key:', err);
+      }
+    };
+    fetchSiteKey();
+  }, []);
+
+  const verifyTurnstile = async (token: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-turnstile', {
+        body: { token },
+      });
+
+      if (error) {
+        console.error('Turnstile verification error:', error);
+        return false;
+      }
+
+      return data?.success === true;
+    } catch (err) {
+      console.error('Error calling verify-turnstile:', err);
+      return false;
+    }
+  };
+
   const onSubmit = async (values: JoinFormValues) => {
+    // Skip CAPTCHA verification if no site key is configured
+    if (turnstileSiteKey && !turnstileToken) {
+      toast({
+        title: t.eventPage.join.captchaRequired,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
+
+      // Verify CAPTCHA if configured
+      if (turnstileSiteKey && turnstileToken) {
+        const isValid = await verifyTurnstile(turnstileToken);
+        if (!isValid) {
+          toast({
+            title: t.eventPage.join.captchaFailed,
+            variant: 'destructive',
+          });
+          // Reset the widget
+          turnstileRef.current?.reset();
+          setTurnstileToken(null);
+          setTurnstileStatus('idle');
+          return;
+        }
+      }
+
       await onJoin(values.name, values.email || undefined);
       toast({
         title: t.eventPage.join.success,
@@ -53,6 +118,10 @@ export const ParticipantJoinForm = ({ eventSlug, onJoin, currentParticipant }: P
         description: errorMessage,
         variant: 'destructive',
       });
+      // Reset CAPTCHA on error
+      turnstileRef.current?.reset();
+      setTurnstileToken(null);
+      setTurnstileStatus('idle');
     } finally {
       setIsSubmitting(false);
     }
@@ -135,8 +204,33 @@ export const ParticipantJoinForm = ({ eventSlug, onJoin, currentParticipant }: P
               )}
             />
 
+            {turnstileSiteKey && (
+              <div className="flex justify-center">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={turnstileSiteKey}
+                  onSuccess={(token) => {
+                    setTurnstileToken(token);
+                    setTurnstileStatus('solved');
+                  }}
+                  onError={() => {
+                    setTurnstileToken(null);
+                    setTurnstileStatus('error');
+                  }}
+                  onExpire={() => {
+                    setTurnstileToken(null);
+                    setTurnstileStatus('idle');
+                  }}
+                />
+              </div>
+            )}
+
             <div className="flex flex-col gap-3">
-              <Button type="submit" disabled={isSubmitting} className="w-full">
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || (turnstileSiteKey && turnstileStatus !== 'solved')} 
+                className="w-full"
+              >
                 <UserPlus className="h-4 w-4 mr-2" />
                 {t.eventPage.join.joinButton}
               </Button>
