@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useRef, useState } from 'react';
-import { MapPin, Car, Train, Bike, Footprints, Navigation, Loader2 } from 'lucide-react';
+import { MapPin, Navigation, Loader2, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -103,9 +103,9 @@ export const FairSpotMap = ({ participants, eventId, fairSpotAddress }: FairSpot
     fetchToken();
   }, []);
 
-  // Initialize and update map
+  // Initialize and update map - only show fair spot marker for privacy
   useEffect(() => {
-    if (!mapboxToken || !mapContainerRef.current || participantsWithLocation.length === 0) return;
+    if (!mapboxToken || !mapContainerRef.current || !fairSpot) return;
 
     // Clear existing markers
     markersRef.current.forEach(m => m.remove());
@@ -116,8 +116,8 @@ export const FairSpotMap = ({ participants, eventId, fairSpotAddress }: FairSpot
       mapRef.current = new mapboxgl.Map({
         container: mapContainerRef.current,
         style: 'mapbox://styles/mapbox/streets-v12',
-        center: fairSpot ? [fairSpot.lng, fairSpot.lat] : [2.3522, 48.8566],
-        zoom: 10,
+        center: [fairSpot.lng, fairSpot.lat],
+        zoom: 13,
       });
       mapRef.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
     }
@@ -126,63 +126,28 @@ export const FairSpotMap = ({ participants, eventId, fairSpotAddress }: FairSpot
 
     // Wait for map to load before adding markers
     const addMarkers = () => {
-      // Add participant markers
-      participantsWithLocation.forEach(p => {
-        const color = TRANSPORT_COLORS[p.transport_mode || 'car'] || '#6b7280';
-        
-        const el = document.createElement('div');
-        el.className = 'flex items-center justify-center w-8 h-8 rounded-full border-2 border-white shadow-lg cursor-pointer';
-        el.style.backgroundColor = color;
-        el.innerHTML = `<span style="color: white; font-size: 12px; font-weight: bold;">${escapeHtml(p.name.charAt(0).toUpperCase())}</span>`;
+      // Only add fair spot marker - individual locations are kept private
+      const fairSpotEl = document.createElement('div');
+      fairSpotEl.className = 'flex items-center justify-center w-10 h-10 rounded-full border-2 border-white shadow-lg';
+      fairSpotEl.style.background = 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8))';
+      fairSpotEl.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
 
-        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-          <div style="padding: 4px;">
-            <div style="font-weight: 600; font-size: 14px;">${escapeHtml(p.name)}</div>
-            <div style="font-size: 12px; color: #666;">${escapeHtml(getTransportLabel(p.transport_mode))}</div>
-          </div>
-        `);
+      const fairSpotPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+        <div style="padding: 4px;">
+          <div style="font-weight: 600; font-size: 14px;">${escapeHtml(t.eventPage?.location?.fairMeetingPoint || 'Fair Meeting Point')}</div>
+          ${fairSpotAddress ? `<div style="font-size: 12px; color: #666;">${escapeHtml(fairSpotAddress)}</div>` : ''}
+        </div>
+      `);
 
-        const marker = new mapboxgl.Marker({ element: el })
-          .setLngLat([p.location_lng as number, p.location_lat as number])
-          .setPopup(popup)
-          .addTo(map);
+      const fairSpotMarker = new mapboxgl.Marker({ element: fairSpotEl })
+        .setLngLat([fairSpot.lng, fairSpot.lat])
+        .setPopup(fairSpotPopup)
+        .addTo(map);
 
-        markersRef.current.push(marker);
-      });
+      markersRef.current.push(fairSpotMarker);
 
-      // Add fair spot marker
-      if (fairSpot) {
-        const fairSpotEl = document.createElement('div');
-        fairSpotEl.className = 'flex items-center justify-center w-10 h-10 rounded-full border-2 border-white shadow-lg';
-        fairSpotEl.style.background = 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8))';
-        fairSpotEl.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
-
-        const fairSpotPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-          <div style="padding: 4px;">
-            <div style="font-weight: 600; font-size: 14px;">${escapeHtml(t.eventPage?.location?.fairMeetingPoint || 'Fair Meeting Point')}</div>
-            ${fairSpotAddress ? `<div style="font-size: 12px; color: #666;">${escapeHtml(fairSpotAddress)}</div>` : ''}
-          </div>
-        `);
-
-        const fairSpotMarker = new mapboxgl.Marker({ element: fairSpotEl })
-          .setLngLat([fairSpot.lng, fairSpot.lat])
-          .setPopup(fairSpotPopup)
-          .addTo(map);
-
-        markersRef.current.push(fairSpotMarker);
-      }
-
-      // Fit bounds to show all markers
-      if (participantsWithLocation.length > 0) {
-        const bounds = new mapboxgl.LngLatBounds();
-        participantsWithLocation.forEach(p => {
-          bounds.extend([p.location_lng as number, p.location_lat as number]);
-        });
-        if (fairSpot) {
-          bounds.extend([fairSpot.lng, fairSpot.lat]);
-        }
-        map.fitBounds(bounds, { padding: 50, maxZoom: 14 });
-      }
+      // Center map on fair spot
+      map.setCenter([fairSpot.lng, fairSpot.lat]);
     };
 
     if (map.loaded()) {
@@ -195,7 +160,7 @@ export const FairSpotMap = ({ participants, eventId, fairSpotAddress }: FairSpot
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
     };
-  }, [mapboxToken, participantsWithLocation, fairSpot, fairSpotAddress, t]);
+  }, [mapboxToken, fairSpot, fairSpotAddress, t]);
 
   // Cleanup map on unmount
   useEffect(() => {
@@ -215,26 +180,6 @@ export const FairSpotMap = ({ participants, eventId, fairSpotAddress }: FairSpot
       walk: t.eventPage?.location?.transportModes?.walk || 'Walk',
     };
     return labels[mode || 'car'] || labels.car;
-  };
-
-  const getTransportIcon = (mode: string | null) => {
-    switch (mode) {
-      case 'car': return <Car className="h-3 w-3" />;
-      case 'public_transit': return <Train className="h-3 w-3" />;
-      case 'bike': return <Bike className="h-3 w-3" />;
-      case 'walk': return <Footprints className="h-3 w-3" />;
-      default: return <Car className="h-3 w-3" />;
-    }
-  };
-
-  const getTransportColor = (mode: string | null) => {
-    switch (mode) {
-      case 'car': return 'bg-blue-500';
-      case 'public_transit': return 'bg-green-500';
-      case 'bike': return 'bg-yellow-500';
-      case 'walk': return 'bg-violet-500';
-      default: return 'bg-blue-500';
-    }
   };
 
   // Create a map of participant IDs with location data
@@ -296,8 +241,7 @@ export const FairSpotMap = ({ participants, eventId, fairSpotAddress }: FairSpot
         <CardContent className="pt-0">
           <div className="space-y-2">
             {participants.map((participant) => {
-              const fullData = locationMap.get(participant.id || '');
-              const hasLocation = !!fullData;
+              const hasLocation = locationMap.has(participant.id || '');
 
               return (
                 <div 
@@ -307,18 +251,18 @@ export const FairSpotMap = ({ participants, eventId, fairSpotAddress }: FairSpot
                   <div className="flex items-center gap-2">
                     <div 
                       className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                        hasLocation ? getTransportColor(fullData?.transport_mode) : 'bg-gray-300'
+                        hasLocation ? 'bg-primary' : 'bg-gray-300'
                       }`}
                     >
                       {(participant.name || '?').charAt(0).toUpperCase()}
                     </div>
                     <span className="text-sm">{participant.name}</span>
                   </div>
-                  {hasLocation && fullData ? (
-                    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs ${getTransportColor(fullData.transport_mode)}`}>
-                      {getTransportIcon(fullData.transport_mode)}
-                      <span>{getTransportLabel(fullData.transport_mode)}</span>
-                    </div>
+                  {hasLocation ? (
+                    <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                      <Check className="h-3 w-3" />
+                      {t.eventPage?.location?.locationSaved || 'Shared'}
+                    </span>
                   ) : (
                     <span className="text-xs text-muted-foreground">
                       {t.eventPage?.location?.locationPending || 'Pending'}

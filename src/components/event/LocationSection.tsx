@@ -78,7 +78,7 @@ export const LocationSection = ({
       
       const { data, error } = await supabase
         .from('participants')
-        .select('id, event_id, name, is_organizer, location_lat, location_lng, transport_mode, created_at, email, user_id')
+        .select('id, event_id, name, is_organizer, location_lat, location_lng, transport_mode, created_at')
         .eq('id', participantId)
         .single();
 
@@ -313,7 +313,7 @@ export const LocationSection = ({
       if (participantId) {
         const { data } = await supabase
           .from('participants')
-          .select('id, event_id, name, is_organizer, location_lat, location_lng, transport_mode, created_at, email, user_id')
+          .select('id, event_id, name, is_organizer, location_lat, location_lng, transport_mode, created_at')
           .eq('id', participantId)
           .single();
         if (data) {
