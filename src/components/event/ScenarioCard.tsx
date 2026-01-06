@@ -266,7 +266,7 @@ export const ScenarioCard = ({
 
         {/* Ranking buttons - fixed to bottom on mobile for thumb access */}
         {showRanking && isVotingEnabled && (
-          <div className="space-y-3 pt-2 border-t">
+          <div className="space-y-3 pt-2 border-t md:relative md:bottom-auto md:left-auto md:right-auto md:bg-transparent md:p-0 md:border-t md:shadow-none fixed bottom-0 left-0 right-0 bg-card p-4 border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10">
             <div className="flex gap-2">
               {[1, 2, 3].map((r) => (
                 <Button
@@ -274,7 +274,7 @@ export const ScenarioCard = ({
                   variant={rank === r ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => onRankChange?.(rank === r ? null : r)}
-                  className="flex-1"
+                  className="flex-1 h-11 md:h-9 text-base md:text-sm"
                   disabled={isDealbreaker}
                 >
                   {r === 1 ? '1st' : r === 2 ? '2nd' : '3rd'}
@@ -286,12 +286,17 @@ export const ScenarioCard = ({
               variant={isDealbreaker ? 'destructive' : 'ghost'}
               size="sm"
               onClick={onDealbreakerToggle}
-              className="w-full text-sm"
+              className="w-full text-base md:text-sm h-11 md:h-9"
             >
               <Ban className="mr-2 h-4 w-4" />
               {isDealbreaker ? 'Remove veto' : '🚫 Veto this option'}
             </Button>
           </div>
+        )}
+        
+        {/* Spacer for fixed mobile buttons */}
+        {showRanking && isVotingEnabled && (
+          <div className="h-28 md:hidden" aria-hidden="true" />
         )}
       </CardContent>
     </Card>
