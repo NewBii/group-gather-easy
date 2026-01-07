@@ -9,6 +9,8 @@ import { ConstraintBadge, SpecialTraitBadge, MidpointInfo } from './ConstraintBa
 import { DateAvailabilityPicker, type DateOption, type DateVote } from './DateAvailabilityPicker';
 import { MatchedSparkBadge } from './MatchedSparkBadge';
 import { AccommodationCard, type AccommodationInfo } from './AccommodationCard';
+import { BudgetBadge, type BudgetInfo } from './BudgetBadge';
+import { LocationJustification, type LocationInfo } from './LocationJustification';
 interface SpecialTrait {
   type: 'kid_friendly' | 'accessibility' | 'dietary' | 'budget' | 'midpoint' | 'nightlife' | 'outdoor' | 'indoor';
   label: string;
@@ -47,6 +49,8 @@ interface ScenarioCardProps {
       midpoint_info?: MidpointInfoData;
       date_is_flexible?: boolean;
       accommodation?: AccommodationInfo;
+      budget?: BudgetInfo;
+      location?: LocationInfo;
     } | null;
   };
   rank?: number;
@@ -106,6 +110,8 @@ export const ScenarioCard = ({
     midpoint_info?: MidpointInfoData;
     date_is_flexible?: boolean;
     accommodation?: AccommodationInfo;
+    budget?: BudgetInfo;
+    location?: LocationInfo;
   } | null;
   
   const constraintsApplied = metadata?.constraints_applied;
@@ -113,6 +119,8 @@ export const ScenarioCard = ({
   const midpointInfo = metadata?.midpoint_info;
   const dateIsFlexible = metadata?.date_is_flexible;
   const accommodation = metadata?.accommodation;
+  const budget = metadata?.budget;
+  const locationInfo = metadata?.location;
 
   const isDateLocked = constraintsApplied?.date_locked;
   const isTimeLocked = constraintsApplied?.time_locked;
@@ -229,6 +237,16 @@ export const ScenarioCard = ({
           </div>
         )}
 
+        {/* Location justification for region-to-town specificity */}
+        {locationInfo?.townName && locationInfo?.justification && (
+          <LocationJustification location={locationInfo} />
+        )}
+
+        {/* Budget badge */}
+        {budget?.total_weekend && (
+          <BudgetBadge budget={budget} showDetails />
+        )}
+
         {/* Special traits (kid-friendly, accessibility, etc.) */}
         {specialTraits.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -251,11 +269,12 @@ export const ScenarioCard = ({
           />
         )}
 
-        {/* Accommodation section */}
+        {/* Accommodation section with booking deep-links */}
         {accommodation && (
           <AccommodationCard 
             accommodation={accommodation}
             vibe={vibe}
+            budget={budget}
           />
         )}
 

@@ -235,31 +235,38 @@ serve(async (req) => {
     let tool_choice: any | undefined;
 
     if (action === 'analyze-context') {
-      // Semantic analysis of the spark prompt to identify constraints
+      // Strategic Planner: Semantic analysis to distinguish FIXED constraints from VARIABLES
       messages = [
         {
           role: 'system',
-          content: `You are an expert at understanding natural language event descriptions. Your job is to identify:
-1. FIXED constraints (things explicitly decided, like "dinner on Friday" = date is locked)
-2. FLEXIBLE elements (things that need group input, like "a weekend in May" = date is a poll)
-3. MISSING info that needs to be decided
-4. Special requirements (kids, accessibility, dietary restrictions)
-5. Participant origins if mentioned (cities people are coming from)
-6. Vibe/atmosphere hints (party, formal, casual, adventure)
-7. PRE-EXISTING ACCOMMODATION - Look for keywords like "staying at", "at my house", "already booked", "rented", hotel names, Airbnb mentions, or specific accommodation names
+          content: `You are a STRATEGIC PLANNER for group events. Your job is to analyze natural language and distinguish between:
 
-Today's date is ${new Date().toISOString().split('T')[0]}.
+1. FIXED CONSTRAINTS (locked, non-negotiable):
+   - Specific dates mentioned ("this Friday", "March 15th") → date is LOCKED
+   - Specific venues/addresses ("at my house", "Restaurant Le Jardin") → location is LOCKED
+   - Pre-booked accommodation ("staying at", "already booked", hotel/Airbnb names) → accommodation is LOCKED
+   
+2. VARIABLES (need group input/polling):
+   - Vague time references ("sometime in spring", "a weekend in May") → create DATE POLL
+   - Regions without specific towns ("somewhere in Normandy", "the coast") → need LOCATION SPECIFICITY
+   - No vibe mentioned → create VIBE POLL (Relaxed vs Active)
+   - No accommodation specified → suggest ACCOMMODATION TYPE
 
-Analyze the prompt carefully. If someone says "dinner Friday" that's a FIXED date. If they say "sometime next month" that's FLEXIBLE.
+SPECIFICITY UPSCALING (The 'Narrowing' Logic):
+- If a REGION is mentioned (e.g., "Normandy", "Provence", "the Alps"), you MUST suggest 3 SPECIFIC TOWNS
+- Each town needs a 1-sentence justification explaining why it fits the group
+- Focus ONLY on: Location + Vibe + Accommodation Type (no minute-by-minute itineraries)
 
-ACCOMMODATION DETECTION:
-- If the organizer mentions ANY specific accommodation (hotel name, "my place", "already booked a cabin", "staying at...", Airbnb, etc.), set accommodation.isLocked = true
-- Extract the accommodation name/description if mentioned
-- If NO specific accommodation is mentioned, set accommodation.isLocked = false so dynamic suggestions can be shown`
+POLLING DETECTION:
+- Set needs_vibe_poll = true if no clear vibe indicator (party, chill, adventure, romantic, active, relaxed)
+- Set needs_date_poll = true if date is flexible/missing
+- Set needs_location_poll = true if location is a region (not a specific venue/town)
+
+Today's date is ${new Date().toISOString().split('T')[0]}.`
         },
         {
           role: 'user',
-          content: `Analyze this event description for constraints: "${sanitizedSparkPrompt}"`
+          content: `Analyze this event description for constraints and variables: "${sanitizedSparkPrompt}"`
         }
       ];
 
@@ -267,7 +274,7 @@ ACCOMMODATION DETECTION:
         type: 'function',
         function: {
           name: 'analyze_constraints',
-          description: 'Extract fixed and flexible constraints from the event description',
+          description: 'Strategic analysis of fixed constraints vs variables needing group input',
           parameters: {
             type: 'object',
             properties: {
@@ -281,30 +288,67 @@ ACCOMMODATION DETECTION:
                     properties: {
                       type: { type: 'string', enum: ['fixed', 'flexible', 'missing'] },
                       value: { type: 'string', description: 'The date or date range if mentioned (YYYY-MM-DD format or description)' },
-                      displayLabel: { type: 'string', description: 'Human-readable label like "Friday, Oct 12" or "Vote: Weekend A or B"' }
+                      displayLabel: { type: 'string', description: 'Human-readable label like "Friday, Oct 12" or "Vote: Best weekend?"' },
+                      isLocked: { type: 'boolean', description: 'True if organizer specified exact date - guests cannot change' }
                     },
-                    required: ['type']
+                    required: ['type', 'isLocked']
                   },
                   location: {
                     type: 'object',
                     properties: {
                       type: { type: 'string', enum: ['fixed', 'flexible', 'missing'] },
                       value: { type: 'string', description: 'The location if mentioned' },
-                      displayLabel: { type: 'string' }
+                      displayLabel: { type: 'string' },
+                      isLocked: { type: 'boolean', description: 'True if organizer specified exact venue - guests cannot change' },
+                      isRegion: { type: 'boolean', description: 'True if location is a broad region needing specificity (e.g., Normandy, Provence)' },
+                      regionName: { type: 'string', description: 'The region name if isRegion is true' }
                     },
-                    required: ['type']
+                    required: ['type', 'isLocked']
                   },
                   time: {
                     type: 'object',
                     properties: {
                       type: { type: 'string', enum: ['fixed', 'flexible', 'missing'] },
                       value: { type: 'string', enum: ['morning', 'afternoon', 'evening'] },
-                      displayLabel: { type: 'string' }
+                      displayLabel: { type: 'string' },
+                      isLocked: { type: 'boolean' }
+                    },
+                    required: ['type']
+                  },
+                  vibe: {
+                    type: 'object',
+                    properties: {
+                      type: { type: 'string', enum: ['fixed', 'flexible', 'missing'] },
+                      value: { type: 'string', enum: ['casual', 'active', 'relaxed', 'formal'] },
+                      isLocked: { type: 'boolean', description: 'True if organizer clearly specified vibe' }
                     },
                     required: ['type']
                   }
                 },
-                required: ['date', 'location', 'time']
+                required: ['date', 'location', 'time', 'vibe']
+              },
+              polling: {
+                type: 'object',
+                properties: {
+                  needs_date_poll: { type: 'boolean', description: 'True if date is not fixed and guests should vote' },
+                  needs_vibe_poll: { type: 'boolean', description: 'True if vibe is not specified and guests should vote (Relaxed vs Active)' },
+                  needs_location_poll: { type: 'boolean', description: 'True if location is a region and guests should vote on specific towns' }
+                },
+                required: ['needs_date_poll', 'needs_vibe_poll', 'needs_location_poll']
+              },
+              locationSuggestions: {
+                type: 'array',
+                description: 'If location is a region, suggest 3 specific towns with justifications',
+                items: {
+                  type: 'object',
+                  properties: {
+                    townName: { type: 'string', description: 'Specific town/city name (e.g., Deauville, not Normandy)' },
+                    justification: { type: 'string', description: '1-sentence reason why it fits the group' },
+                    vibeMatch: { type: 'string', enum: ['active', 'relaxed', 'both'], description: 'What vibe this town suits' }
+                  },
+                  required: ['townName', 'justification', 'vibeMatch']
+                },
+                maxItems: 3
               },
               accommodation: {
                 type: 'object',
@@ -342,7 +386,7 @@ ACCOMMODATION DETECTION:
               },
               suggestedDescription: { type: 'string', description: 'A brief event description' }
             },
-            required: ['eventTitle', 'eventType', 'constraints', 'accommodation', 'specialRequirements', 'participantOrigins', 'vibeKeywords', 'isVague', 'suggestedDescription'],
+            required: ['eventTitle', 'eventType', 'constraints', 'polling', 'accommodation', 'specialRequirements', 'participantOrigins', 'vibeKeywords', 'isVague', 'suggestedDescription'],
             additionalProperties: false
           }
         }
@@ -393,22 +437,54 @@ When suggesting dates, always suggest dates in the future (at least a few days f
       const constraints = contextAnalysis?.constraints || {};
       const vibeKeywords = contextAnalysis?.vibeKeywords || [];
       const accommodation = contextAnalysis?.accommodation || { isLocked: false };
+      const polling = contextAnalysis?.polling || {};
+      const locationSuggestions = contextAnalysis?.locationSuggestions || [];
       
-      let scenarioGuidelines = `Guidelines for great scenarios:
+      let scenarioGuidelines = `STRATEGIC PLANNING RULES:
+
+THE 'SWEET SPOT' OF DETAIL:
+- Focus ONLY on [Location] + [Vibe] + [Accommodation Type]
+- Do NOT create minute-by-minute itineraries
+- Each scenario should be a distinct, complete option
+
+SCENARIO STRUCTURE:
 - Option A: Often the "safe" or conventional choice
 - Option B: A more adventurous or different timing
 - Option C: A balanced alternative or unique twist`;
 
-      // Add accommodation guidelines
+      // Handle locked accommodation
       if (accommodation.isLocked) {
         scenarioGuidelines += `\n\nACCOMMODATION IS LOCKED: The organizer has already arranged accommodation: "${accommodation.lockedName || 'Pre-arranged stay'}". 
-DO NOT suggest external stays or alternative accommodations. Simply reference their choice in scenarios if relevant.`;
+DO NOT suggest external stays or alternative accommodations. Simply reference their choice.`;
       } else if (contextAnalysis?.eventType === 'trip') {
-        scenarioGuidelines += `\n\nACCOMMODATION SUGGESTIONS: Since no accommodation is pre-booked, suggest an accommodation style for each scenario:
-- For Active/Adventure vibes: suggest 'eco-lodge' or 'camping'
-- For Relaxed vibes: suggest 'luxury-villa' or 'boutique-hotel'
-- For Casual vibes: suggest 'apartment'
-- For Formal vibes: suggest 'boutique-hotel'`;
+        scenarioGuidelines += `\n\nDYNAMIC ACCOMMODATION SUGGESTIONS: Since no accommodation is pre-booked:
+- Include accommodation style AND estimated budget per person per night
+- For Active/Adventure vibes: suggest 'eco-lodge' (€40-80/person/night)
+- For Relaxed vibes: suggest 'luxury-villa' (€100-200/person/night)
+- For Casual vibes: suggest 'apartment' (€30-60/person/night)
+- For Formal vibes: suggest 'boutique-hotel' (€80-150/person/night)`;
+      }
+
+      // Handle region-to-town specificity
+      if (locationSuggestions.length > 0) {
+        scenarioGuidelines += `\n\nSPECIFICITY UPSCALING - REGION TO TOWN:
+The organizer mentioned a broad region. Use these 3 specific towns for your scenarios:
+${locationSuggestions.map((s: any, i: number) => `${i + 1}. ${s.townName}: ${s.justification} (Suits: ${s.vibeMatch} vibe)`).join('\n')}
+
+Each scenario should feature ONE of these specific towns as its location.`;
+      } else if (constraints.location?.isRegion) {
+        scenarioGuidelines += `\n\nSPECIFICITY UPSCALING REQUIRED:
+The location "${constraints.location.regionName || constraints.location.value}" is a region.
+You MUST suggest 3 SPECIFIC, DISTINCT towns within this region.
+For each town, provide a 1-sentence justification why it fits the group.`;
+      }
+
+      // Handle vibe polling
+      if (polling.needs_vibe_poll) {
+        scenarioGuidelines += `\n\nVIBE NOT SPECIFIED - OFFER CONTRAST:
+- Option A: Lean RELAXED (spa, scenic, leisurely)
+- Option B: Lean ACTIVE (adventure, sports, exploration)
+- Option C: Mix of both OR a unique twist`;
       }
 
       // Add kid-friendliness if kids are mentioned
@@ -436,11 +512,11 @@ Make them genuinely distinct to help the group find a direction.`;
       }
 
       // Add constraint awareness
-      if (constraints.date?.type === 'fixed') {
-        scenarioGuidelines += `\n\nDATE IS LOCKED: ${constraints.date.value || constraints.date.displayLabel}. All scenarios must use this date.`;
+      if (constraints.date?.isLocked) {
+        scenarioGuidelines += `\n\nDATE IS LOCKED: ${constraints.date.value || constraints.date.displayLabel}. All scenarios must use this date. Guests CANNOT poll or change it.`;
       }
-      if (constraints.location?.type === 'fixed') {
-        scenarioGuidelines += `\n\nLOCATION IS LOCKED: ${constraints.location.value || constraints.location.displayLabel}. All scenarios must use this location.`;
+      if (constraints.location?.isLocked) {
+        scenarioGuidelines += `\n\nLOCATION IS LOCKED: ${constraints.location.value || constraints.location.displayLabel}. All scenarios must use this location. Guests CANNOT change it.`;
       }
 
       // Parse date range from prompt if date is flexible
@@ -479,10 +555,10 @@ ${suggestedWeekends.map((w, i) => `${i + 1}. ${formatDateISO(w.date)} ${w.isLong
       messages = [
         {
           role: 'system',
-          content: `You are an expert event planner using behavioral science principles. 
+          content: `You are a STRATEGIC PLANNER for group events using behavioral science principles.
 Create exactly 3 distinct, concrete event scenarios that represent different trade-offs.
 Each scenario should be complete and actionable - not vague options.
-Make them genuinely different in timing, vibe, or style.
+Make them genuinely different in location, vibe, or style.
 Today's date is ${new Date().toISOString().split('T')[0]}. Suggest dates in the near future.
 
 ${scenarioGuidelines}${dateRangeInfo}`
@@ -497,7 +573,7 @@ ${scenarioGuidelines}${dateRangeInfo}`
         type: 'function',
         function: {
           name: 'create_scenarios',
-          description: 'Create 3 distinct event scenarios for group voting',
+          description: 'Create 3 distinct event scenarios with location, vibe, and accommodation focus',
           parameters: {
             type: 'object',
             properties: {
@@ -507,18 +583,28 @@ ${scenarioGuidelines}${dateRangeInfo}`
                   type: 'object',
                   properties: {
                     label: { type: 'string', description: 'Option label (A, B, or C)' },
-                    title: { type: 'string', description: 'Short catchy title' },
+                    title: { type: 'string', description: 'Short catchy title including specific town name if applicable' },
                     description: { type: 'string', description: 'A compelling 1-2 sentence description' },
                     suggested_date: { type: 'string', description: 'Suggested date in YYYY-MM-DD format' },
                     time_of_day: { type: 'string', enum: ['morning', 'afternoon', 'evening'] },
                     vibe: { type: 'string', enum: ['casual', 'active', 'relaxed', 'formal'] },
                     date_is_flexible: { type: 'boolean', description: 'True if date is not locked and should show date picker' },
+                    location: {
+                      type: 'object',
+                      properties: {
+                        townName: { type: 'string', description: 'Specific town/city name' },
+                        justification: { type: 'string', description: '1-sentence reason why this town fits' },
+                        isLocked: { type: 'boolean', description: 'True if organizer locked this location' }
+                      },
+                      required: ['townName']
+                    },
                     constraints_applied: {
                       type: 'object',
                       properties: {
                         date_locked: { type: 'boolean' },
                         location_locked: { type: 'boolean' },
-                        time_locked: { type: 'boolean' }
+                        time_locked: { type: 'boolean' },
+                        vibe_locked: { type: 'boolean' }
                       }
                     },
                     special_traits: {
@@ -538,6 +624,31 @@ ${scenarioGuidelines}${dateRangeInfo}`
                         suggested_location: { type: 'string' },
                         travel_logic: { type: 'string', description: 'Brief explanation of why this is a fair midpoint' }
                       }
+                    },
+                    budget: {
+                      type: 'object',
+                      description: 'Estimated budget breakdown per person for the weekend',
+                      properties: {
+                        accommodation_per_night: { type: 'number', description: 'Estimated cost per person per night in EUR' },
+                        meals_per_day: { type: 'number', description: 'Estimated meals cost per person per day in EUR' },
+                        total_weekend: { type: 'number', description: 'Total estimated cost per person for the weekend (2 nights + meals) in EUR' },
+                        budget_tier: { type: 'string', enum: ['budget', 'moderate', 'premium'], description: 'Budget category for this scenario' }
+                      },
+                      required: ['total_weekend', 'budget_tier']
+                    },
+                    accommodation: {
+                      type: 'object',
+                      properties: {
+                        isLocked: { type: 'boolean' },
+                        lockedName: { type: 'string' },
+                        lockedDescription: { type: 'string' },
+                        suggestedStyle: { type: 'string', enum: ['eco-lodge', 'luxury-villa', 'boutique-hotel', 'apartment', 'camping'] },
+                        location: { type: 'string', description: 'Town/city for booking search' },
+                        checkIn: { type: 'string', description: 'Check-in date YYYY-MM-DD' },
+                        checkOut: { type: 'string', description: 'Check-out date YYYY-MM-DD' },
+                        adults: { type: 'number', description: 'Expected number of adults' },
+                        children: { type: 'number', description: 'Expected number of children' }
+                      }
                     }
                   },
                   required: ['label', 'title', 'description', 'suggested_date', 'time_of_day', 'vibe'],
@@ -552,7 +663,9 @@ ${scenarioGuidelines}${dateRangeInfo}`
                   has_locked_constraints: { type: 'boolean' },
                   requires_midpoint: { type: 'boolean' },
                   kid_friendly_required: { type: 'boolean' },
-                  is_starter_concepts: { type: 'boolean', description: 'True if these are wildly different concepts for a vague prompt' }
+                  is_starter_concepts: { type: 'boolean', description: 'True if these are wildly different concepts for a vague prompt' },
+                  needs_vibe_poll: { type: 'boolean', description: 'True if vibe was not specified and scenarios show vibe variety' },
+                  needs_location_poll: { type: 'boolean', description: 'True if location was a region and scenarios show different towns' }
                 }
               }
             },
@@ -603,8 +716,13 @@ ${scenarioGuidelines}${dateRangeInfo}`
       messages = [
         {
           role: 'system',
-          content: `You are an expert event planner incorporating group feedback into your scenarios.
+          content: `You are a STRATEGIC PLANNER incorporating group feedback into your scenarios.
 The group has provided specific requirements and preferences. You MUST address these in your new scenarios.
+
+Focus on THE 'SWEET SPOT' OF DETAIL:
+- [Location] + [Vibe] + [Accommodation Type]
+- Include budget estimates per person
+- Do NOT create minute-by-minute itineraries
 
 ${sparkInstructions}
 
@@ -633,11 +751,19 @@ Incorporate all the participant requirements listed above.${contextAnalysis ? `\
                   type: 'object',
                   properties: {
                     label: { type: 'string', description: 'Option label (A, B, or C)' },
-                    title: { type: 'string', description: 'Short catchy title' },
+                    title: { type: 'string', description: 'Short catchy title including specific town name' },
                     description: { type: 'string', description: 'A compelling 1-2 sentence description that mentions how participant requirements are addressed' },
                     suggested_date: { type: 'string', description: 'Suggested date in YYYY-MM-DD format' },
                     time_of_day: { type: 'string', enum: ['morning', 'afternoon', 'evening'] },
                     vibe: { type: 'string', enum: ['casual', 'active', 'relaxed', 'formal'] },
+                    location: {
+                      type: 'object',
+                      properties: {
+                        townName: { type: 'string', description: 'Specific town/city name' },
+                        justification: { type: 'string', description: '1-sentence reason why this town fits' }
+                      },
+                      required: ['townName']
+                    },
                     constraints_applied: {
                       type: 'object',
                       properties: {
@@ -655,6 +781,29 @@ Incorporate all the participant requirements listed above.${contextAnalysis ? `\
                           label: { type: 'string' },
                           description: { type: 'string' }
                         }
+                      }
+                    },
+                    budget: {
+                      type: 'object',
+                      properties: {
+                        accommodation_per_night: { type: 'number' },
+                        meals_per_day: { type: 'number' },
+                        total_weekend: { type: 'number' },
+                        budget_tier: { type: 'string', enum: ['budget', 'moderate', 'premium'] }
+                      },
+                      required: ['total_weekend', 'budget_tier']
+                    },
+                    accommodation: {
+                      type: 'object',
+                      properties: {
+                        isLocked: { type: 'boolean' },
+                        lockedName: { type: 'string' },
+                        suggestedStyle: { type: 'string', enum: ['eco-lodge', 'luxury-villa', 'boutique-hotel', 'apartment', 'camping'] },
+                        location: { type: 'string' },
+                        checkIn: { type: 'string' },
+                        checkOut: { type: 'string' },
+                        adults: { type: 'number' },
+                        children: { type: 'number' }
                       }
                     },
                     integrated_spark_ids: {
@@ -815,12 +964,17 @@ ${JSON.stringify(participantPreferences, null, 2)}`
     }
 
     return new Response(
-      JSON.stringify({ success: true, data: result }),
-      { headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify(result),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          ...rateLimitHeaders,
+          'Content-Type': 'application/json' 
+        } 
+      }
     );
-
   } catch (error) {
-    console.error('Error in ai-event-assistant:', error);
+    console.error('AI Event Assistant error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
