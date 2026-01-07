@@ -87,8 +87,8 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
           .single();
 
         if (eventData?.location_data) {
-          const locationData = eventData.location_data as { context_analysis?: ContextAnalysis };
-          setContextAnalysis(locationData.context_analysis || null);
+          const locationData = eventData.location_data as { contextAnalysis?: ContextAnalysis };
+          setContextAnalysis(locationData.contextAnalysis || null);
         }
         
         if (eventData?.ai_phase) {
