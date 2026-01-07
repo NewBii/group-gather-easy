@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AIProgressStepper } from './AIProgressStepper';
 import { SharePanel } from '@/components/event/SharePanel';
 import { PulseVoting } from '@/components/event/PulseVoting';
-import { ConsensusScore } from '@/components/event/ConsensusScore';
+
 import { GroupWishlist } from '@/components/event/GroupWishlist';
 
 // Types matching PulseVoting component
@@ -474,14 +474,6 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
             compact
           />
 
-          {/* Consensus Score */}
-          {scenarios.length > 0 && (
-            <ConsensusScore
-              eventId={eventId}
-              scenarios={scenarios}
-              totalParticipants={participantCount}
-            />
-          )}
 
           {/* Group Wishlist */}
           <GroupWishlist eventId={eventId} />
