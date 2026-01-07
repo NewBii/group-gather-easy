@@ -235,6 +235,19 @@ const Event = () => {
         );
 
         await supabase.from('scenario_date_options').insert(dateOptionsToInsert);
+
+        // Also update event_candidate_dates for the AvailabilityPanel
+        // First delete existing dates, then insert fresh ones
+        await supabase.from('event_candidate_dates').delete().eq('event_id', event.id);
+        
+        const eventCandidateDates = dateOptions.map((opt: any) => ({
+          event_id: event.id,
+          suggested_date: opt.date,
+          is_long_weekend: opt.is_long_weekend,
+          holiday_name: opt.holiday_name_fr || opt.holiday_name,
+        }));
+
+        await supabase.from('event_candidate_dates').insert(eventCandidateDates);
       }
 
       // Mark remaining sparks as integrated (even if not matched to specific scenario)
