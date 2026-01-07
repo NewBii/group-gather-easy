@@ -1,4 +1,4 @@
-import { Sun, Moon, Sunset, Coffee, Zap, Heart, Briefcase, Ban, Lock, Vote } from 'lucide-react';
+import { Sun, Moon, Sunset, Coffee, Zap, Heart, Briefcase, Ban, Lock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { ConstraintBadge, SpecialTraitBadge, MidpointInfo } from './ConstraintBadge';
-import { DateAvailabilityPicker, type DateOption, type DateVote } from './DateAvailabilityPicker';
 import { MatchedSparkBadge } from './MatchedSparkBadge';
 import { AccommodationCard, type AccommodationInfo } from './AccommodationCard';
 import { BudgetBadge, type BudgetInfo } from './BudgetBadge';
@@ -59,10 +58,6 @@ interface ScenarioCardProps {
   onDealbreakerToggle?: () => void;
   isVotingEnabled?: boolean;
   showRanking?: boolean;
-  dateOptions?: DateOption[];
-  dateVotes?: DateVote[];
-  participantId?: string;
-  onDateVoteChange?: () => void;
   matchedSparks?: MatchedSpark[];
 }
 
@@ -87,10 +82,6 @@ export const ScenarioCard = ({
   onDealbreakerToggle,
   isVotingEnabled = true,
   showRanking = true,
-  dateOptions = [],
-  dateVotes = [],
-  participantId,
-  onDateVoteChange,
   matchedSparks = [],
 }: ScenarioCardProps) => {
   const { language } = useLanguage();
@@ -125,18 +116,13 @@ export const ScenarioCard = ({
   const isDateLocked = constraintsApplied?.date_locked;
   const isTimeLocked = constraintsApplied?.time_locked;
 
-  // Determine if we should show date picker vs static badge
-  const showDatePicker = !isDateLocked && dateIsFlexible && dateOptions.length > 0;
-
   return (
     <Card
       className={cn(
         'relative transition-all duration-300',
         isDealbreaker && 'opacity-60 border-destructive bg-destructive/5',
         rank === 1 && !isDealbreaker && 'ring-2 ring-primary border-primary',
-        rank === 2 && !isDealbreaker && 'ring-1 ring-primary/50',
-        // Slightly taller when showing date picker
-        showDatePicker && 'min-h-[380px]'
+        rank === 2 && !isDealbreaker && 'ring-1 ring-primary/50'
       )}
     >
       {/* Rank badge */}
@@ -169,73 +155,38 @@ export const ScenarioCard = ({
           <p className="text-sm text-muted-foreground">{scenario.description}</p>
         )}
 
-        {/* Date section - either static badge or interactive picker */}
-        {showDatePicker ? (
-          <DateAvailabilityPicker
-            dateOptions={dateOptions}
-            scenarioId={scenario.id}
-            participantId={participantId}
-            existingVotes={dateVotes}
-            onVoteChange={onDateVoteChange}
-            disabled={!isVotingEnabled}
-          />
-        ) : (
-          /* Static Date/Time/Vibe badges with lock indicators */
-          <div className="flex flex-wrap gap-2">
-            {formattedDate && (
-              <Badge 
-                variant={isDateLocked ? "default" : "secondary"} 
-                className={cn(
-                  "capitalize gap-1",
-                  isDateLocked && "bg-primary text-primary-foreground"
-                )}
-              >
-                {isDateLocked && <Lock className="h-3 w-3" />}
-                📅 {formattedDate}
-              </Badge>
-            )}
-            {TimeIcon && (
-              <Badge 
-                variant={isTimeLocked ? "default" : "secondary"} 
-                className={cn(
-                  timeIcons[time].color,
-                  isTimeLocked && "bg-primary text-primary-foreground"
-                )}
-              >
-                {isTimeLocked && <Lock className="h-3 w-3 mr-1" />}
-                {timeIcons[time].label}
-              </Badge>
-            )}
-            {VibeConfig && (
-              <Badge className={VibeConfig.color}>
-                {VibeConfig.label}
-              </Badge>
-            )}
-          </div>
-        )}
-
-        {/* Time/Vibe badges when date picker is shown */}
-        {showDatePicker && (TimeIcon || VibeConfig) && (
-          <div className="flex flex-wrap gap-2">
-            {TimeIcon && (
-              <Badge 
-                variant={isTimeLocked ? "default" : "secondary"} 
-                className={cn(
-                  timeIcons[time].color,
-                  isTimeLocked && "bg-primary text-primary-foreground"
-                )}
-              >
-                {isTimeLocked && <Lock className="h-3 w-3 mr-1" />}
-                {timeIcons[time].label}
-              </Badge>
-            )}
-            {VibeConfig && (
-              <Badge className={VibeConfig.color}>
-                {VibeConfig.label}
-              </Badge>
-            )}
-          </div>
-        )}
+        {/* Static Date/Time/Vibe badges with lock indicators */}
+        <div className="flex flex-wrap gap-2">
+          {formattedDate && (
+            <Badge 
+              variant={isDateLocked ? "default" : "secondary"} 
+              className={cn(
+                "capitalize gap-1",
+                isDateLocked && "bg-primary text-primary-foreground"
+              )}
+            >
+              {isDateLocked && <Lock className="h-3 w-3" />}
+              📅 {formattedDate}
+            </Badge>
+          )}
+          {TimeIcon && (
+            <Badge 
+              variant={isTimeLocked ? "default" : "secondary"} 
+              className={cn(
+                timeIcons[time].color,
+                isTimeLocked && "bg-primary text-primary-foreground"
+              )}
+            >
+              {isTimeLocked && <Lock className="h-3 w-3 mr-1" />}
+              {timeIcons[time].label}
+            </Badge>
+          )}
+          {VibeConfig && (
+            <Badge className={VibeConfig.color}>
+              {VibeConfig.label}
+            </Badge>
+          )}
+        </div>
 
         {/* Location justification for region-to-town specificity */}
         {locationInfo?.townName && locationInfo?.justification && (

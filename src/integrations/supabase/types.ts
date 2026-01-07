@@ -258,6 +258,107 @@ export type Database = {
           },
         ]
       }
+      event_candidate_dates: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          holiday_name: string | null
+          id: string
+          is_long_weekend: boolean | null
+          suggested_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          holiday_name?: string | null
+          id?: string
+          is_long_weekend?: boolean | null
+          suggested_date: string
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          holiday_name?: string | null
+          id?: string
+          is_long_weekend?: boolean | null
+          suggested_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_candidate_dates_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_date_availability: {
+        Row: {
+          availability: string
+          created_at: string | null
+          date_id: string
+          event_id: string
+          id: string
+          participant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          availability: string
+          created_at?: string | null
+          date_id: string
+          event_id: string
+          id?: string
+          participant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          availability?: string
+          created_at?: string | null
+          date_id?: string
+          event_id?: string
+          id?: string
+          participant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_date_availability_date_id_fkey"
+            columns: ["date_id"]
+            isOneToOne: false
+            referencedRelation: "event_candidate_dates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_date_availability_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_date_availability_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_date_availability_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants_masked"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_date_availability_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_tasks: {
         Row: {
           assigned_to: string | null
