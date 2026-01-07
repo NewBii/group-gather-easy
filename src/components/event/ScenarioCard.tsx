@@ -155,17 +155,15 @@ export const ScenarioCard = ({
           <p className="text-sm text-muted-foreground">{scenario.description}</p>
         )}
 
-        {/* Static Date/Time/Vibe badges with lock indicators */}
+        {/* Static Time/Vibe badges with lock indicators - Date only shown if locked */}
         <div className="flex flex-wrap gap-2">
-          {formattedDate && (
+          {/* Only show date badge when it's LOCKED by organizer - flexible dates are handled in AvailabilityPanel */}
+          {formattedDate && isDateLocked && (
             <Badge 
-              variant={isDateLocked ? "default" : "secondary"} 
-              className={cn(
-                "capitalize gap-1",
-                isDateLocked && "bg-primary text-primary-foreground"
-              )}
+              variant="default" 
+              className="capitalize gap-1 bg-primary text-primary-foreground"
             >
-              {isDateLocked && <Lock className="h-3 w-3" />}
+              <Lock className="h-3 w-3" />
               📅 {formattedDate}
             </Badge>
           )}
