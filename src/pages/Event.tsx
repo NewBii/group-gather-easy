@@ -198,6 +198,9 @@ const Event = () => {
             special_traits: scenario.special_traits,
             midpoint_info: scenario.midpoint_info,
             date_is_flexible: scenario.date_is_flexible,
+            location: scenario.location,
+            budget: scenario.budget,
+            accommodation: scenario.accommodation,
           },
         }).select().single();
 
