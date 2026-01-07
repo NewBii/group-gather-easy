@@ -169,6 +169,22 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
           if (dateOptError) {
             console.error('Error saving date options:', dateOptError);
           }
+
+          // Also insert into event_candidate_dates for the AvailabilityPanel
+          const eventCandidateDates = dateOptions.map((opt: any) => ({
+            event_id: event.id,
+            suggested_date: opt.date,
+            is_long_weekend: opt.is_long_weekend,
+            holiday_name: opt.holiday_name_fr || opt.holiday_name,
+          }));
+
+          const { error: eventDateError } = await supabase
+            .from('event_candidate_dates')
+            .insert(eventCandidateDates);
+
+          if (eventDateError) {
+            console.error('Error saving event candidate dates:', eventDateError);
+          }
         }
       }
 
