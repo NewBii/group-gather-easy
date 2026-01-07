@@ -1,4 +1,4 @@
-import { Sun, Moon, Sunset, Coffee, Zap, Heart, Briefcase, Ban, Lock } from 'lucide-react';
+import { Sun, Moon, Sunset, Coffee, Zap, Heart, Briefcase, Ban, Lock, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -72,6 +72,24 @@ const vibeIcons = {
   active: { icon: Zap, label: 'Active', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
   relaxed: { icon: Heart, label: 'Relaxed', color: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400' },
   formal: { icon: Briefcase, label: 'Formal', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+};
+
+const generateBookingUrl = (location: string, checkIn?: string, checkOut?: string, adults: number = 10): string => {
+  const baseUrl = 'https://www.booking.com/searchresults.html';
+  const params = new URLSearchParams({ ss: location });
+  if (checkIn) params.set('checkin', checkIn);
+  if (checkOut) params.set('checkout', checkOut);
+  params.set('group_adults', adults.toString());
+  return `${baseUrl}?${params.toString()}`;
+};
+
+const generateAirbnbUrl = (location: string, checkIn?: string, checkOut?: string, adults: number = 10): string => {
+  const baseUrl = 'https://www.airbnb.com/s/' + encodeURIComponent(location) + '/homes';
+  const params = new URLSearchParams();
+  if (checkIn) params.set('checkin', checkIn);
+  if (checkOut) params.set('checkout', checkOut);
+  params.set('adults', adults.toString());
+  return `${baseUrl}?${params.toString()}`;
 };
 
 export const ScenarioCard = ({
@@ -225,6 +243,42 @@ export const ScenarioCard = ({
             vibe={vibe}
             budget={budget}
           />
+        )}
+
+        {/* Quick accommodation search links - show when we have location but no dedicated AccommodationCard */}
+        {locationInfo?.townName && !accommodation && (
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 gap-2 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
+              onClick={() => {
+                const checkOut = scenario.suggested_date 
+                  ? format(new Date(new Date(scenario.suggested_date).getTime() + 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd') 
+                  : undefined;
+                const url = generateBookingUrl(locationInfo.townName!, scenario.suggested_date, checkOut);
+                window.open(url, '_blank', 'noopener,noreferrer');
+              }}
+            >
+              <ExternalLink className="h-4 w-4" />
+              Booking.com
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 gap-2 bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700 dark:bg-rose-900/20 dark:hover:bg-rose-900/30 dark:border-rose-800 dark:text-rose-300"
+              onClick={() => {
+                const checkOut = scenario.suggested_date 
+                  ? format(new Date(new Date(scenario.suggested_date).getTime() + 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd') 
+                  : undefined;
+                const url = generateAirbnbUrl(locationInfo.townName!, scenario.suggested_date, checkOut);
+                window.open(url, '_blank', 'noopener,noreferrer');
+              }}
+            >
+              <ExternalLink className="h-4 w-4" />
+              Airbnb
+            </Button>
+          </div>
         )}
 
         {/* Matched sparks badge - "I've been heard" visual */}
