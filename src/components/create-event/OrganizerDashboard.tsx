@@ -124,7 +124,7 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
             .select('id')
             .eq('event_id', eventId)
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
           if (existingParticipant) {
             setParticipantId(existingParticipant.id);
@@ -134,7 +134,7 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
               .from('profiles')
               .select('display_name, email')
               .eq('user_id', userId)
-              .single();
+              .maybeSingle();
 
             // Create participant record
             const { data: newParticipant } = await supabase
@@ -150,6 +150,55 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
               .single();
 
             if (newParticipant) {
+              setParticipantId(newParticipant.id);
+            }
+          }
+        } else {
+          // Anonymous user - check sessionStorage for existing participant
+          const storageKey = `organizer-${eventId}`;
+          const storedParticipantId = sessionStorage.getItem(storageKey);
+
+          if (storedParticipantId) {
+            // Verify it still exists in database
+            const { data: existingParticipant } = await supabase
+              .from('participants')
+              .select('id')
+              .eq('id', storedParticipantId)
+              .maybeSingle();
+
+            if (existingParticipant) {
+              setParticipantId(existingParticipant.id);
+            } else {
+              // Stored ID is stale, create new anonymous participant
+              const { data: newParticipant } = await supabase
+                .from('participants')
+                .insert({
+                  event_id: eventId,
+                  name: 'Organizer',
+                  is_organizer: true,
+                })
+                .select()
+                .single();
+
+              if (newParticipant) {
+                sessionStorage.setItem(storageKey, newParticipant.id);
+                setParticipantId(newParticipant.id);
+              }
+            }
+          } else {
+            // No stored ID, create new anonymous participant
+            const { data: newParticipant } = await supabase
+              .from('participants')
+              .insert({
+                event_id: eventId,
+                name: 'Organizer',
+                is_organizer: true,
+              })
+              .select()
+              .single();
+
+            if (newParticipant) {
+              sessionStorage.setItem(storageKey, newParticipant.id);
               setParticipantId(newParticipant.id);
             }
           }
