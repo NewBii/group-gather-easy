@@ -964,7 +964,7 @@ ${JSON.stringify(participantPreferences, null, 2)}`
     }
 
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify({ success: true, data: result }),
       { 
         headers: { 
           ...corsHeaders, 
