@@ -8,12 +8,12 @@ import { ConstraintBadge } from './ConstraintBadge';
 import { ParticipantVoice } from './ParticipantVoice';
 import { GroupWishlist } from './GroupWishlist';
 import { StickyProgressBar } from './StickyProgressBar';
+import { AvailabilityPanel } from './AvailabilityPanel';
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
-import type { DateOption, DateVote } from './DateAvailabilityPicker';
 
 interface SpecialTrait {
   type: 'kid_friendly' | 'accessibility' | 'dietary' | 'budget' | 'midpoint' | 'nightlife' | 'outdoor' | 'indoor';
@@ -88,14 +88,6 @@ interface VoteState {
   };
 }
 
-interface DateOptionsMap {
-  [scenarioId: string]: DateOption[];
-}
-
-interface DateVotesMap {
-  [scenarioId: string]: DateVote[];
-}
-
 export const PulseVoting = ({
   eventId,
   scenarios,
@@ -114,88 +106,13 @@ export const PulseVoting = ({
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [savedVotes, setSavedVotes] = useState<VoteState>({});
-  const [dateOptionsMap, setDateOptionsMap] = useState<DateOptionsMap>({});
-  const [dateVotesMap, setDateVotesMap] = useState<DateVotesMap>({});
   const [scenarioSparksMap, setScenarioSparksMap] = useState<ScenarioSparksMap>({});
   const [sparksRefreshKey, setSparksRefreshKey] = useState(0);
   const [votersCount, setVotersCount] = useState(0);
   const [frontrunner, setFrontrunner] = useState<{ label: string; consensus: number } | null>(null);
 
-  // Load date options for scenarios
-  useEffect(() => {
-    const scenarioIds = scenarios.map(s => s.id);
-    if (scenarioIds.length === 0) return;
-
-    const loadDateOptions = async () => {
-      const { data } = await supabase
-        .from('scenario_date_options')
-        .select('*')
-        .in('scenario_id', scenarioIds);
-
-      if (data) {
-        const optionsMap: DateOptionsMap = {};
-        data.forEach((opt: any) => {
-          if (!optionsMap[opt.scenario_id]) {
-            optionsMap[opt.scenario_id] = [];
-          }
-          optionsMap[opt.scenario_id].push({
-            id: opt.id,
-            suggested_date: opt.suggested_date,
-            is_long_weekend: opt.is_long_weekend,
-            holiday_name: opt.holiday_name,
-          });
-        });
-        setDateOptionsMap(optionsMap);
-      }
-    };
-
-    loadDateOptions();
-  }, [scenarios]);
-
-  // Load date votes for participant
-  useEffect(() => {
-    if (!participantId) return;
-    const scenarioIds = scenarios.map(s => s.id);
-    if (scenarioIds.length === 0) return;
-
-    const loadDateVotes = async () => {
-      const { data } = await supabase
-        .from('scenario_date_votes')
-        .select('*')
-        .eq('participant_id', participantId)
-        .in('scenario_id', scenarioIds);
-
-      if (data) {
-        const votesMap: DateVotesMap = {};
-        data.forEach((vote: any) => {
-          if (!votesMap[vote.scenario_id]) {
-            votesMap[vote.scenario_id] = [];
-          }
-          votesMap[vote.scenario_id].push({
-            date_option_id: vote.date_option_id,
-            availability: vote.availability,
-          });
-        });
-        setDateVotesMap(votesMap);
-      }
-    };
-
-    loadDateVotes();
-
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel('date-votes-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'scenario_date_votes' },
-        () => loadDateVotes()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [participantId, scenarios]);
+  // Check if date is flexible (needs availability voting)
+  const isDateFlexible = contextAnalysis?.constraints?.date?.type === 'flexible';
 
   // Load existing votes
   useEffect(() => {
@@ -417,6 +334,15 @@ export const PulseVoting = ({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Scenarios - Carousel on mobile, grid on desktop */}
         <div className="lg:col-span-2 space-y-4">
+          {/* Dedicated Availability Panel (only if date is flexible) */}
+          {isDateFlexible && (
+            <AvailabilityPanel
+              eventId={eventId}
+              participantId={participantId}
+              disabled={!canVote}
+            />
+          )}
+
           {isMobile ? (
             <Carousel className="w-full" opts={{ align: 'start', loop: false }}>
               <CarouselContent className="-ml-2">
@@ -430,10 +356,6 @@ export const PulseVoting = ({
                       onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
                       isVotingEnabled={canVote}
                       showRanking={canVote}
-                      dateOptions={dateOptionsMap[scenario.id] || []}
-                      dateVotes={dateVotesMap[scenario.id] || []}
-                      participantId={participantId}
-                      onDateVoteChange={() => {}}
                       matchedSparks={scenarioSparksMap[scenario.id] || []}
                     />
                   </CarouselItem>
@@ -456,10 +378,6 @@ export const PulseVoting = ({
                   onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
                   isVotingEnabled={canVote}
                   showRanking={canVote}
-                  dateOptions={dateOptionsMap[scenario.id] || []}
-                  dateVotes={dateVotesMap[scenario.id] || []}
-                  participantId={participantId}
-                  onDateVoteChange={() => {}}
                   matchedSparks={scenarioSparksMap[scenario.id] || []}
                 />
               ))}
