@@ -245,8 +245,8 @@ export const ScenarioCard = ({
           />
         )}
 
-        {/* Quick accommodation search links - show when we have location but no dedicated AccommodationCard */}
-        {locationInfo?.townName && !accommodation && (
+        {/* Quick accommodation search links - show when we have location info */}
+        {locationInfo?.townName && (
           <div className="flex flex-col sm:flex-row gap-2 pt-2">
             <Button
               variant="outline"
