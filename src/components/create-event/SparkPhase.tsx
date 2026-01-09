@@ -137,6 +137,9 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
             special_traits: s.special_traits,
             midpoint_info: s.midpoint_info,
             date_is_flexible: s.date_is_flexible,
+            location: s.location,
+            budget: s.budget,
+            accommodation: s.accommodation,
           }
         }));
 
