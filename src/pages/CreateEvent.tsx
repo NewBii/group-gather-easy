@@ -302,18 +302,6 @@ const CreateEvent = () => {
               selectedMode={selectedMode}
               onSelectMode={(mode) => setSelectedMode(mode)}
             />
-            
-            {/* Continue button */}
-            <div className="mt-8 flex justify-end">
-              <Button
-                onClick={() => selectedMode && setSelectedMode(selectedMode)}
-                disabled={!selectedMode}
-                className="px-6"
-              >
-                {t.createEvent.wizard.continue}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
           </div>
         </div>
       </div>
