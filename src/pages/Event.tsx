@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, UserPlus } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import { useEventData } from '@/hooks/useEventData';
 import { useParticipant } from '@/hooks/useParticipant';
 import { EventHeader } from '@/components/event/EventHeader';
-import { ParticipantJoinForm } from '@/components/event/ParticipantJoinForm';
 import { DateVoting } from '@/components/event/DateVoting';
 import { ActivitySection } from '@/components/event/ActivitySection';
 import { LocationSection } from '@/components/event/LocationSection';
@@ -60,6 +62,54 @@ interface ContextAnalysis {
   participantOrigins?: string[];
   isVague?: boolean;
 }
+
+// Welcome gate shown before user joins
+const EventWelcomeGate = ({ eventTitle, onJoin }: { eventTitle: string; onJoin: (name: string) => Promise<any> }) => {
+  const [name, setName] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
+  const { t } = useLanguage();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setIsJoining(true);
+    try {
+      await onJoin(name.trim());
+    } catch {
+      setIsJoining(false);
+    }
+  };
+
+  return (
+    <div className="container py-16 md:py-24">
+      <div className="max-w-md mx-auto">
+        <Card className="border-border/50 shadow-lg">
+          <CardContent className="pt-8 pb-8 px-8 space-y-6 text-center">
+            <h1 className="text-2xl font-bold text-foreground">{eventTitle}</h1>
+            <p className="text-muted-foreground">You've been invited to join this event.</p>
+            <form onSubmit={handleSubmit} className="space-y-4 text-left">
+              <div className="space-y-2">
+                <Label htmlFor="join-name">Your first name</Label>
+                <Input
+                  id="join-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your name"
+                  autoFocus
+                  disabled={isJoining}
+                />
+              </div>
+              <Button type="submit" className="w-full gap-2" size="lg" disabled={!name.trim() || isJoining}>
+                {isJoining ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                Join the event
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
 
 const Event = () => {
   const { id } = useParams<{ id: string }>();
@@ -383,6 +433,11 @@ const Event = () => {
     );
   }
 
+  // Gate: user must join before seeing event content
+  if (!currentParticipant) {
+    return <EventWelcomeGate eventTitle={event.title} onJoin={joinEvent} />;
+  }
+
   // AI Concierge Mode
   if (organizationMode === 'ai_concierge') {
     return (
@@ -398,7 +453,7 @@ const Event = () => {
           ) : (
             <>
               <AIProgressStepper currentPhase="pulse" />
-              <ParticipantJoinForm eventSlug={event.unique_slug} onJoin={joinEvent} currentParticipant={currentParticipant} />
+              <ParticipantsList participants={participants} currentParticipantId={currentParticipant?.id} />
               {scenarios.length > 0 && (
                 <PulseVoting 
                   eventId={event.id} 
@@ -431,7 +486,7 @@ const Event = () => {
         </Button>
         <EventHeader event={event} />
         <VoteResults dateOptions={dateOptions} dateVotes={dateVotes} activities={activities} activityVotes={activityVotes} locationSuggestions={locationSuggestions} locationVotes={locationVotes} />
-        <ParticipantJoinForm eventSlug={event.unique_slug} onJoin={joinEvent} currentParticipant={currentParticipant} />
+        <VoteResults dateOptions={dateOptions} dateVotes={dateVotes} activities={activities} activityVotes={activityVotes} locationSuggestions={locationSuggestions} locationVotes={locationVotes} />
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             {dateOptions.length > 0 && <DateVoting dateOptions={dateOptions} dateVotes={dateVotes} participantId={currentParticipant?.id} participantsCount={participants.length} />}
