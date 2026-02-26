@@ -50,29 +50,51 @@ const fallbackClarify = (prompt: string, lang: string): { alreadyKnown: Record<s
 
   if (/\b(\d+\s*(personnes?|amis?|potes?|collègues?|people|friends|colleagues|guests?))\b/i.test(lower)) {
     alreadyKnown.who = 'mentioned';
-  } else if (questions.length < 3) {
+  } else {
+    // WHO expands into 3 sub-steps
     questions.push({
       dimension: 'who',
-      question: lang === 'fr' ? "Vous serez combien environ ?" : "How many people roughly?",
-      answerType: 'chips+text',
+      subStep: 'who_count',
+      question: lang === 'fr' ? "Combien de personnes environ ?" : "How many people roughly?",
+      answerType: 'text',
       chips: [],
+    });
+    questions.push({
+      dimension: 'who',
+      subStep: 'who_composition',
+      question: lang === 'fr' ? "Qui sera de la partie ?" : "Who will be there?",
+      answerType: 'chips',
+      multiSelect: true,
+      chips: lang === 'fr'
+        ? ['Entre adultes', 'Quelques enfants dans le groupe', 'Des ados aussi', 'Plusieurs générations (grands-parents...)']
+        : ['Adults only', 'Some kids in the group', 'Teenagers too', 'Multiple generations (grandparents...)'],
+    });
+    questions.push({
+      dimension: 'who',
+      subStep: 'who_needs',
+      question: lang === 'fr' ? "Quelque chose à prévoir pour que tout le monde soit à l'aise ?" : "Anything to plan so everyone is comfortable?",
+      answerType: 'chips',
+      multiSelect: true,
+      chips: lang === 'fr'
+        ? ['Régimes alimentaires particuliers', "Besoins d'accessibilité", 'On accueille des animaux', 'Rien de particulier']
+        : ['Dietary needs', 'Accessibility needs', 'Pets welcome', 'Nothing specific'],
     });
   }
 
   if (/\b(budget|€|\$|euros?|cher|pas cher|cheap|expensive|premium)\b/i.test(lower)) {
     alreadyKnown.budget = 'mentioned';
-  } else if (questions.length < 3) {
+  } else {
     questions.push({
       dimension: 'budget',
       question: lang === 'fr' ? "Vous avez un budget en tête ?" : "Any budget in mind?",
       answerType: 'chips',
       chips: lang === 'fr'
-        ? ['< 50€/pers', '50-150€', '150-300€', '> 300€', 'Pas de contrainte']
-        : ['< €50/person', '€50-150', '€150-300', '> €300', 'No constraint'],
+        ? ['< 50€/pers', '50-150€', '150-300€', '> 300€', 'Pas de limite']
+        : ['< €50/person', '€50-150', '€150-300', '> €300', 'No limit'],
     });
   }
 
-  return { alreadyKnown, questionsToAsk: questions.slice(0, 3) };
+  return { alreadyKnown, questionsToAsk: questions };
 };
 
 export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
@@ -154,9 +176,13 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
 
   // Step 2 → Step 3: Build summary from answers
   const handleClarifyDone = () => {
+    // Merge WHO sub-step answers into a single "who" value
+    const whoParts = [answers.who_count, answers.who_composition, answers.who_needs]
+      .filter(Boolean)
+      .join(' · ');
     const ctx: StructuredContext = {
       when: alreadyKnown.when || answers.when || '',
-      who: alreadyKnown.who || answers.who || '',
+      who: alreadyKnown.who || whoParts || answers.who || '',
       what: alreadyKnown.what || answers.what || '',
       where: alreadyKnown.where || answers.where || '',
       budget: alreadyKnown.budget || answers.budget || '',
@@ -319,6 +345,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
           answers={answers}
           onAnswersChange={setAnswers}
           onDone={handleClarifyDone}
+          totalQuestions={clarifyingQuestions.length}
         />
       )}
 
