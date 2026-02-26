@@ -45,6 +45,7 @@ const fallbackClarify = (prompt: string, lang: string): { alreadyKnown: Record<s
       chips: lang === 'fr'
         ? ['Date fixe', 'Période flexible', 'Les participants décident']
         : ['Fixed date', 'Flexible period', 'Let participants decide'],
+      multiSelect: false,
     });
   }
 
@@ -91,6 +92,7 @@ const fallbackClarify = (prompt: string, lang: string): { alreadyKnown: Record<s
       chips: lang === 'fr'
         ? ['< 50€/pers', '50-150€', '150-300€', '> 300€', 'Pas de limite']
         : ['< €50/person', '€50-150', '€150-300', '> €300', 'No limit'],
+      multiSelect: false,
     });
   }
 
