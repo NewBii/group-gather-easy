@@ -261,11 +261,11 @@ export const ScenarioCard = ({
 
         {/* Quick accommodation search links - show when we have location info */}
         {locationInfo?.townName && (
-          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+          <div className="flex gap-2 pt-1">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 gap-2 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
+              className="gap-1.5 text-xs h-8"
               onClick={() => {
                 const checkOut = scenario.suggested_date 
                   ? format(new Date(new Date(scenario.suggested_date).getTime() + 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd') 
@@ -274,13 +274,13 @@ export const ScenarioCard = ({
                 window.open(url, '_blank', 'noopener,noreferrer');
               }}
             >
-              <ExternalLink className="h-4 w-4" />
+              <ExternalLink className="h-3 w-3" />
               Booking.com
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 gap-2 bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700 dark:bg-rose-900/20 dark:hover:bg-rose-900/30 dark:border-rose-800 dark:text-rose-300"
+              className="gap-1.5 text-xs h-8"
               onClick={() => {
                 const checkOut = scenario.suggested_date 
                   ? format(new Date(new Date(scenario.suggested_date).getTime() + 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd') 
@@ -289,7 +289,7 @@ export const ScenarioCard = ({
                 window.open(url, '_blank', 'noopener,noreferrer');
               }}
             >
-              <ExternalLink className="h-4 w-4" />
+              <ExternalLink className="h-3 w-3" />
               Airbnb
             </Button>
           </div>
@@ -302,7 +302,8 @@ export const ScenarioCard = ({
 
         {/* Ranking buttons - fixed to bottom on mobile for thumb access */}
         {showRanking && isVotingEnabled && (
-          <div className="space-y-3 pt-2 border-t md:relative md:bottom-auto md:left-auto md:right-auto md:bg-transparent md:p-0 md:border-t md:shadow-none fixed bottom-0 left-0 right-0 bg-card p-4 border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10">
+          <div className="space-y-3 pt-4 mt-2 border-t md:relative md:bottom-auto md:left-auto md:right-auto md:bg-transparent md:p-0 md:border-t md:shadow-none fixed bottom-0 left-0 right-0 bg-card p-4 border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{language === 'fr' ? 'Votre classement' : 'Your ranking'}</p>
             <div className="flex gap-2">
               {[1, 2, 3].map((r) => (
                 <Button

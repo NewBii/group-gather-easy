@@ -47,9 +47,9 @@ const vibeToStyle: Record<string, AccommodationInfo['suggestedStyle']> = {
 };
 
 const budgetTierColors = {
-  budget: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  moderate: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  premium: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  budget: 'bg-muted text-muted-foreground',
+  moderate: 'bg-muted text-muted-foreground',
+  premium: 'bg-muted text-muted-foreground',
 };
 
 const budgetTierLabels = {
@@ -159,26 +159,15 @@ export const AccommodationCard = ({
           <p className="text-sm text-muted-foreground">{styleConfig.description}</p>
         </div>
 
-        {/* Budget breakdown */}
-        {budget?.total_weekend && (
-          <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
-            <Euro className="h-4 w-4 text-muted-foreground" />
-            <div className="text-sm">
-              <span className="font-medium text-foreground">
-                ~€{budget.total_weekend}
-              </span>
-              <span className="text-muted-foreground"> / person / weekend</span>
-            </div>
-          </div>
-        )}
+        {/* Budget breakdown removed — shown in badge above */}
 
-        {/* Booking buttons - deep links */}
+        {/* Booking buttons - compact row */}
         {canGenerateLink && (
-          <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="w-full gap-2 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
+              className="gap-1.5 text-xs h-8"
               onClick={() => {
                 const url = generateBookingUrl(
                   accommodation.location!,
@@ -190,13 +179,13 @@ export const AccommodationCard = ({
                 window.open(url, '_blank', 'noopener,noreferrer');
               }}
             >
-              <ExternalLink className="h-4 w-4" />
-              Search Booking.com
+              <ExternalLink className="h-3 w-3" />
+              Booking.com
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="w-full gap-2 bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700 dark:bg-rose-900/20 dark:hover:bg-rose-900/30 dark:border-rose-800 dark:text-rose-300"
+              className="gap-1.5 text-xs h-8"
               onClick={() => {
                 const url = generateAirbnbUrl(
                   accommodation.location!,
@@ -208,8 +197,8 @@ export const AccommodationCard = ({
                 window.open(url, '_blank', 'noopener,noreferrer');
               }}
             >
-              <ExternalLink className="h-4 w-4" />
-              Search Airbnb
+              <ExternalLink className="h-3 w-3" />
+              Airbnb
             </Button>
           </div>
         )}
