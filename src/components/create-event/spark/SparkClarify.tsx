@@ -201,32 +201,46 @@ export const SparkClarify = ({ questions, answers, onAnswersChange, onDone, tota
     </div>
   );
 
+  // Determine if a question should use multi-select
+  const isMultiSelect = (q: ClarifyQuestion): boolean => {
+    if (q.multiSelect !== undefined) return q.multiSelect;
+    // Default: multi-select for where, what, who_composition, who_needs; single for budget, when
+    if (q.dimension === 'budget') return false;
+    if (q.dimension === 'when') return false;
+    if (q.dimension === 'where' || q.dimension === 'what') return true;
+    if (q.subStep === 'who_composition' || q.subStep === 'who_needs') return true;
+    return false;
+  };
+
   // Render chips (single or multi-select)
-  const renderChips = (q: ClarifyQuestion) => (
-    <div className="flex flex-wrap gap-2">
-      {q.chips?.map(chip => {
-        const selected = q.multiSelect ? isChipSelected(chip) : currentAnswer === chip;
-        const nothingChip = language === 'fr' ? 'Rien de particulier' : 'Nothing specific';
-        const isNothing = chip === nothingChip;
-        return (
-          <button
-            key={chip}
-            onClick={() => q.multiSelect ? toggleMultiSelect(chip) : setAnswer(chip)}
-            className={`px-4 py-2.5 text-sm rounded-full transition-all min-h-[44px] sm:min-h-0
-              ${selected
-                ? 'border-2 border-primary bg-primary/10 text-primary font-medium'
-                : `border border-border bg-background text-foreground hover:bg-muted ${isNothing ? 'font-medium' : ''}`
-              }
-              max-w-full sm:max-w-none
-            `}
-            style={{ flexBasis: q.chips && q.chips.length <= 2 ? '100%' : undefined }}
-          >
-            {chip}
-          </button>
-        );
-      })}
-    </div>
-  );
+  const renderChips = (q: ClarifyQuestion) => {
+    const multi = isMultiSelect(q);
+    return (
+      <div className="flex flex-wrap gap-2">
+        {q.chips?.map(chip => {
+          const selected = multi ? isChipSelected(chip) : currentAnswer === chip;
+          const nothingChip = language === 'fr' ? 'Rien de particulier' : 'Nothing specific';
+          const isNothing = chip === nothingChip;
+          return (
+            <button
+              key={chip}
+              onClick={() => multi ? toggleMultiSelect(chip) : setAnswer(chip)}
+              className={`px-4 py-2.5 text-sm rounded-full transition-all min-h-[44px] sm:min-h-0
+                ${selected
+                  ? 'border-2 border-primary bg-primary/10 text-primary font-medium'
+                  : `border border-border bg-background text-foreground hover:bg-muted ${isNothing ? 'font-medium' : ''}`
+                }
+                max-w-full sm:max-w-none
+              `}
+              style={{ flexBasis: q.chips && q.chips.length <= 2 ? '100%' : undefined }}
+            >
+              {chip}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
 
   // Render current question input
   const renderQuestionInput = () => {
@@ -235,11 +249,6 @@ export const SparkClarify = ({ questions, answers, onAnswersChange, onDone, tota
     // WHO headcount sub-step
     if (current.subStep === 'who_count') {
       return renderHeadcountInput();
-    }
-
-    // Multi-select chips
-    if (current.multiSelect && current.chips) {
-      return renderChips(current);
     }
 
     // Standard chips + optional text
