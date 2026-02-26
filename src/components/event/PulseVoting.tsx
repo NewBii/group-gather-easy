@@ -69,6 +69,7 @@ interface PulseVotingProps {
   contextAnalysis?: ContextAnalysis | null;
   onRegenerateScenarios?: () => void;
   isRegenerating?: boolean;
+  onVote?: () => void;
 }
 
 interface MatchedSpark {
@@ -98,6 +99,7 @@ export const PulseVoting = ({
   contextAnalysis,
   onRegenerateScenarios,
   isRegenerating,
+  onVote,
 }: PulseVotingProps) => {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -253,6 +255,7 @@ export const PulseVoting = ({
       toast({
         title: t.eventPage?.dateVoting?.saved || 'Votes saved!',
       });
+      onVote?.();
     } catch (error) {
       console.error('Error saving votes:', error);
       toast({

@@ -19,6 +19,7 @@ import { PulseVoting } from '@/components/event/PulseVoting';
 import { LockdownView } from '@/components/event/LockdownView';
 import { OrganizerTaskManager } from '@/components/event/OrganizerTaskManager';
 import { supabase } from '@/integrations/supabase/client';
+import { ParticipantNudge } from '@/components/event/ParticipantNudge';
 import { useToast } from '@/hooks/use-toast';
 
 interface SpecialTrait {
@@ -122,6 +123,7 @@ const Event = () => {
   const [user, setUser] = useState<{ id: string } | null>(null);
   const [contextAnalysis, setContextAnalysis] = useState<ContextAnalysis | null>(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   const {
     event,
@@ -465,11 +467,18 @@ const Event = () => {
                   contextAnalysis={contextAnalysis}
                   onRegenerateScenarios={handleRegenerateScenarios}
                   isRegenerating={isRegenerating}
+                  onVote={() => setHasInteracted(true)}
                 />
               )}
               <div className="lg:hidden">
                 <ParticipantsList participants={participants} currentParticipantId={currentParticipant?.id} />
               </div>
+              <ParticipantNudge
+                eventId={event.id}
+                eventSlug={event.unique_slug}
+                isAuthenticated={!!user}
+                hasInteracted={hasInteracted}
+              />
             </>
           )}
         </div>
@@ -488,7 +497,7 @@ const Event = () => {
         <VoteResults dateOptions={dateOptions} dateVotes={dateVotes} activities={activities} activityVotes={activityVotes} locationSuggestions={locationSuggestions} locationVotes={locationVotes} />
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            {dateOptions.length > 0 && <DateVoting dateOptions={dateOptions} dateVotes={dateVotes} participantId={currentParticipant?.id} participantsCount={participants.length} />}
+            {dateOptions.length > 0 && <DateVoting dateOptions={dateOptions} dateVotes={dateVotes} participantId={currentParticipant?.id} participantsCount={participants.length} onVote={() => setHasInteracted(true)} />}
             <ActivitySection eventId={event.id} activities={activities} activityVotes={activityVotes} participantId={currentParticipant?.id} participantsCount={participants.length} />
             {event.location_type && <LocationSection event={event} locationSuggestions={locationSuggestions} locationVotes={locationVotes} participants={participants} participantId={currentParticipant?.id} onUpdateLocation={updateLocation} />}
           </div>
@@ -499,6 +508,12 @@ const Event = () => {
           </div>
         </div>
         {isOrganizer && <OrganizerTaskManager eventId={event.id} />}
+        <ParticipantNudge
+          eventId={event.id}
+          eventSlug={event.unique_slug}
+          isAuthenticated={!!user}
+          hasInteracted={hasInteracted}
+        />
       </div>
     </div>
   );
