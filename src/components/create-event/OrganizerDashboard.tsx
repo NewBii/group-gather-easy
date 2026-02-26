@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ExternalLink, Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
@@ -419,61 +419,47 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
         </p>
       </div>
 
-      {/* Main Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content - Voting */}
-        <div className="lg:col-span-2 space-y-6">
-          {scenarios.length > 0 && participantId ? (
-            <PulseVoting
-              eventId={eventId}
-              eventSlug={eventSlug}
-              eventTitle={eventTitle}
-              scenarios={scenarios}
-              participantId={participantId}
-              totalParticipants={participantCount}
-              isOrganizer={true}
-              onFinalize={handleFinalize}
-              contextAnalysis={contextAnalysis}
-              onRegenerateScenarios={handleRegenerateScenarios}
-              isRegenerating={isRegenerating}
-            />
-          ) : scenarios.length === 0 ? (
-            <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed">
-              <p className="text-muted-foreground">
-                Scenarios are being generated...
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={handleRegenerateScenarios}
-                disabled={isRegenerating}
-              >
-                {isRegenerating ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                )}
-                Generate Scenarios
-              </Button>
-            </div>
-          ) : (
-            <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-              <p className="text-muted-foreground">Setting up your organizer profile...</p>
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-4">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => window.location.href = `/event/${eventSlug}`}
-          >
-            <ExternalLink className="mr-2 h-4 w-4" />
-            {t.eventCreated?.viewEvent || 'View Event Page'}
-          </Button>
-        </div>
+      {/* Main Layout — single column */}
+      <div className="space-y-6">
+        {scenarios.length > 0 && participantId ? (
+          <PulseVoting
+            eventId={eventId}
+            eventSlug={eventSlug}
+            eventTitle={eventTitle}
+            scenarios={scenarios}
+            participantId={participantId}
+            totalParticipants={participantCount}
+            isOrganizer={true}
+            onFinalize={handleFinalize}
+            contextAnalysis={contextAnalysis}
+            onRegenerateScenarios={handleRegenerateScenarios}
+            isRegenerating={isRegenerating}
+          />
+        ) : scenarios.length === 0 ? (
+          <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed">
+            <p className="text-muted-foreground">
+              Scenarios are being generated...
+            </p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={handleRegenerateScenarios}
+              disabled={isRegenerating}
+            >
+              {isRegenerating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Generate Scenarios
+            </Button>
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+            <p className="text-muted-foreground">Setting up your organizer profile...</p>
+          </div>
+        )}
       </div>
     </div>
   );

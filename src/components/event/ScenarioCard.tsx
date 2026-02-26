@@ -107,8 +107,8 @@ export const ScenarioCard = ({
   const vibe = scenario.suggested_vibe;
 
   const rankLabels = language === 'fr'
-    ? ['1er choix', '2ème choix', '3ème choix']
-    : ['1st choice', '2nd choice', '3rd choice'];
+    ? ['1er', '2ème', '3ème']
+    : ['1st', '2nd', '3rd'];
 
   // Build compact info chips
   const infoChips: string[] = [];
@@ -176,9 +176,9 @@ export const ScenarioCard = ({
 
         {/* Vote buttons */}
         {showRanking && isVotingEnabled && (
-          <div className="space-y-2 pt-3 border-t">
+        <div className="space-y-2 pt-3 border-t">
             <p className="text-xs text-muted-foreground">
-              {language === 'fr' ? 'Votre classement personnel :' : 'Your personal ranking:'}
+              {language === 'fr' ? 'Votre classement' : 'Your ranking'}
             </p>
             <div className="grid grid-cols-3 gap-2">
               {[1, 2, 3].map((r) => (
@@ -188,7 +188,7 @@ export const ScenarioCard = ({
                   onClick={() => onRankChange?.(rank === r ? null : r)}
                   disabled={isDealbreaker}
                   className={cn(
-                    'min-h-[48px] rounded-lg border-2 text-base font-semibold transition-all',
+                    'min-h-[44px] rounded-lg border-2 text-sm font-semibold transition-all',
                     rank === r
                       ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90'
                       : 'border-border bg-background hover:bg-muted'
