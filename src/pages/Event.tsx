@@ -454,7 +454,6 @@ const Event = () => {
           ) : (
             <>
               <AIProgressStepper currentPhase="pulse" />
-              <ParticipantsList participants={participants} currentParticipantId={currentParticipant?.id} />
               {scenarios.length > 0 && (
                 <PulseVoting 
                   eventId={event.id} 
