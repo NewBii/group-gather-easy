@@ -12,7 +12,6 @@ import { EventCreatedPrompt } from '@/components/EventCreatedPrompt';
 import { ProgressIndicator } from '@/components/create-event/ProgressIndicator';
 import { Step1NameAndVibe } from '@/components/create-event/Step1NameAndVibe';
 import { Step2DateAndLocation } from '@/components/create-event/Step2DateAndLocation';
-import { Step3HelpersWanted } from '@/components/create-event/Step3HelpersWanted';
 import { ModeSelector } from '@/components/create-event/ModeSelector';
 import { SparkPhase } from '@/components/create-event/SparkPhase';
 import { OrganizerDashboard } from '@/components/create-event/OrganizerDashboard';
@@ -44,21 +43,13 @@ const CreateEvent = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   
-  // Auth state
   const [user, setUser] = useState<User | null>(null);
-
-  // Mode selection state
   const [selectedMode, setSelectedMode] = useState<OrganizationMode | null>(null);
-
-  // AI Concierge state
   const [aiEventCreated, setAiEventCreated] = useState<{ id: string; slug: string; title?: string } | null>(null);
-
-  // Manual wizard state
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdEvent, setCreatedEvent] = useState<{ id: string; slug: string } | null>(null);
 
-  // Get current user session
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -71,16 +62,12 @@ const CreateEvent = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Date state
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [datePeriods, setDatePeriods] = useState<DatePeriod[]>([
     { id: generateId(), startDate: undefined, endDate: undefined },
   ]);
   const [decideLaterDate, setDecideLaterDate] = useState(false);
   const [decideLaterLocation, setDecideLaterLocation] = useState(false);
-
-  // Tasks state (optional helpers)
-  const [tasks, setTasks] = useState<string[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -94,7 +81,6 @@ const CreateEvent = () => {
 
   const eventType = form.watch('eventType');
 
-  // Reset date selections when event type changes
   useEffect(() => {
     setSelectedDates([]);
     setDatePeriods([{ id: generateId(), startDate: undefined, endDate: undefined }]);
@@ -103,7 +89,6 @@ const CreateEvent = () => {
   const steps = [
     { number: 1, label: t.createEvent.wizard.steps.nameAndVibe },
     { number: 2, label: t.createEvent.wizard.steps.dateAndLocation },
-    { number: 3, label: t.createEvent.wizard.steps.helpersWanted, optional: true },
   ];
 
   const validateStep1 = () => {
@@ -116,7 +101,6 @@ const CreateEvent = () => {
   };
 
   const validateStep2 = (): boolean => {
-    // If decide later is checked, no date validation needed
     if (decideLaterDate) return true;
 
     if (eventType === 'day_event') {
@@ -136,16 +120,14 @@ const CreateEvent = () => {
 
   const handleNext = () => {
     if (currentStep === 1 && !validateStep1()) return;
-    if (currentStep === 2 && !validateStep2()) return;
-    setCurrentStep((prev) => Math.min(prev + 1, 3));
+    setCurrentStep(2);
   };
 
   const handleBack = () => {
     if (currentStep === 1) {
-      // Go back to mode selection
       setSelectedMode(null);
     } else {
-      setCurrentStep((prev) => Math.max(prev - 1, 1));
+      setCurrentStep(1);
     }
   };
 
@@ -155,7 +137,6 @@ const CreateEvent = () => {
       return;
     }
     if (!validateStep2()) {
-      setCurrentStep(2);
       return;
     }
 
@@ -165,7 +146,6 @@ const CreateEvent = () => {
     try {
       const slug = generateSlug();
 
-      // Calculate date range bounds (nullable if decide later)
       let dateRangeStart: Date | null = null;
       let dateRangeEnd: Date | null = null;
 
@@ -228,21 +208,6 @@ const CreateEvent = () => {
         }
       }
 
-      // Insert tasks if any were added
-      if (tasks.length > 0) {
-        const tasksToInsert = tasks.map((title) => ({
-          event_id: eventData.id,
-          title,
-        }));
-
-        const { error: tasksError } = await supabase
-          .from('event_tasks')
-          .insert(tasksToInsert);
-
-        if (tasksError) throw tasksError;
-      }
-
-      // Show success prompt
       setCreatedEvent({ id: eventData.id, slug: slug });
     } catch (error) {
       console.error('Error creating event:', error);
@@ -253,7 +218,6 @@ const CreateEvent = () => {
   };
 
   const handleAIEventCreated = async (eventId: string, slug: string) => {
-    // Fetch the event title
     const { data } = await supabase
       .from('events')
       .select('title')
@@ -263,7 +227,6 @@ const CreateEvent = () => {
     setAiEventCreated({ id: eventId, slug, title: data?.title });
   };
 
-  // Show success prompt if manual event was created
   if (createdEvent) {
     return (
       <div className="container py-12 md:py-16">
@@ -276,7 +239,6 @@ const CreateEvent = () => {
     );
   }
 
-  // Show organizer dashboard with voting if AI event was created
   if (aiEventCreated) {
     return (
       <div className="container py-8 md:py-12">
@@ -292,7 +254,6 @@ const CreateEvent = () => {
     );
   }
 
-  // Mode Selection
   if (!selectedMode) {
     return (
       <div className="container py-8 md:py-12">
@@ -308,7 +269,6 @@ const CreateEvent = () => {
     );
   }
 
-  // AI Concierge Mode - Spark Phase
   if (selectedMode === 'ai_concierge') {
     return (
       <div className="container py-8 md:py-12">
@@ -318,8 +278,6 @@ const CreateEvent = () => {
               onEventCreated={handleAIEventCreated}
               userId={user?.id}
             />
-            
-            {/* Back button */}
             <div className="mt-6 flex justify-start">
               <Button
                 variant="ghost"
@@ -336,21 +294,17 @@ const CreateEvent = () => {
     );
   }
 
-  // Manual Mode - 3-step wizard
+  // Manual Mode - 2-step wizard
   return (
     <div className="container py-8 md:py-12">
       <div className="max-w-2xl mx-auto">
-        {/* Progress Indicator */}
         <ProgressIndicator steps={steps} currentStep={currentStep} />
 
-        {/* Form Card */}
         <div className="bg-card rounded-3xl border border-border/50 shadow-sm p-6 md:p-10">
           <Form {...form}>
             <form onSubmit={(e) => e.preventDefault()}>
-              {/* Step 1: Name & Vibe */}
               {currentStep === 1 && <Step1NameAndVibe form={form} />}
 
-              {/* Step 2: Date & Location */}
               {currentStep === 2 && (
                 <Step2DateAndLocation
                   form={form}
@@ -365,10 +319,6 @@ const CreateEvent = () => {
                 />
               )}
 
-              {/* Step 3: Helpers Wanted */}
-              {currentStep === 3 && <Step3HelpersWanted tasks={tasks} setTasks={setTasks} />}
-
-              {/* Navigation Buttons */}
               <div className="flex items-center justify-between mt-10 pt-6 border-t border-border/50">
                 <Button
                   type="button"
@@ -380,7 +330,7 @@ const CreateEvent = () => {
                   {t.createEvent.wizard.back}
                 </Button>
 
-                {currentStep < 3 ? (
+                {currentStep === 1 ? (
                   <Button
                     type="button"
                     onClick={handleNext}
@@ -390,26 +340,15 @@ const CreateEvent = () => {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <div className="flex items-center gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleSubmit}
-                      disabled={isSubmitting}
-                      className="px-6"
-                    >
-                      {t.createEvent.wizard.helpers.skip}
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleSubmit}
-                      disabled={isSubmitting}
-                      className="gap-2 px-6"
-                    >
-                      {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {t.createEvent.wizard.createEvent}
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className="gap-2 px-6"
+                  >
+                    {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {t.createEvent.wizard.createEvent}
+                  </Button>
                 )}
               </div>
             </form>
