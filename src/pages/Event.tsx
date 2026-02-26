@@ -17,6 +17,7 @@ import { VoteResults } from '@/components/event/VoteResults';
 import { AIProgressStepper } from '@/components/create-event/AIProgressStepper';
 import { PulseVoting } from '@/components/event/PulseVoting';
 import { LockdownView } from '@/components/event/LockdownView';
+import { OrganizerTaskManager } from '@/components/event/OrganizerTaskManager';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -486,7 +487,6 @@ const Event = () => {
         </Button>
         <EventHeader event={event} />
         <VoteResults dateOptions={dateOptions} dateVotes={dateVotes} activities={activities} activityVotes={activityVotes} locationSuggestions={locationSuggestions} locationVotes={locationVotes} />
-        <VoteResults dateOptions={dateOptions} dateVotes={dateVotes} activities={activities} activityVotes={activityVotes} locationSuggestions={locationSuggestions} locationVotes={locationVotes} />
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             {dateOptions.length > 0 && <DateVoting dateOptions={dateOptions} dateVotes={dateVotes} participantId={currentParticipant?.id} participantsCount={participants.length} />}
@@ -499,6 +499,7 @@ const Event = () => {
             </div>
           </div>
         </div>
+        {isOrganizer && <OrganizerTaskManager eventId={event.id} />}
       </div>
     </div>
   );
