@@ -13,6 +13,15 @@ interface AIConciergeTranslations {
     generate: string;
     generating: string;
     quickAdd: string;
+    emptyPrompt: string;
+    analyzing: string;
+    creating: string;
+    crafting: string;
+    starterConcepts: string;
+    tryAgain: string;
+    description: string;
+    tryThese: string;
+    placeholderHint: string;
     waitingRoom: {
       title: string;
       subtitle: string;
@@ -35,6 +44,22 @@ interface AIConciergeTranslations {
       frontrunner: string;
     };
     finalize: string;
+    noNewRequirements: string;
+    scenariosUpdated: string;
+    errorUpdating: string;
+    noVotesYet: string;
+    vetoWarningTitle: string;
+    vetoWarningFinalize: string;
+    errorFinalizing: string;
+    decisionBarometer: string;
+    haveVoted: string;
+    aiRecommendation: string;
+    consensus: string;
+    removeVeto: string;
+    vetoOption: string;
+    first: string;
+    second: string;
+    third: string;
     dateAvailability: {
       title: string;
       available: string;
@@ -54,6 +79,11 @@ interface AIConciergeTranslations {
     taskSplitter: {
       title: string;
       claimTask: string;
+      joinFirst: string;
+      claimed: string;
+      errorClaiming: string;
+      errorUpdating: string;
+      unclaim: string;
     };
   };
 }
@@ -303,6 +333,10 @@ interface Translations {
       orLogin: string;
       orCreateAccount: string;
       or: string;
+      invited: string;
+      firstName: string;
+      firstNamePlaceholder: string;
+      joinEvent: string;
     };
     dateVoting: {
       title: string;
@@ -387,6 +421,14 @@ interface Translations {
       topDate: string;
       topActivity: string;
       topLocation: string;
+    };
+    organizerTasks: {
+      title: string;
+      placeholder: string;
+      add: string;
+      empty: string;
+      errorAdding: string;
+      errorDeleting: string;
     };
   };
   aiConcierge: AIConciergeTranslations;
@@ -746,6 +788,10 @@ export const translations: Record<Language, Translations> = {
         orLogin: 'Se connecter',
         orCreateAccount: 'Créer un compte',
         or: 'ou',
+        invited: 'Vous avez été invité(e) à rejoindre cet événement.',
+        firstName: 'Votre prénom',
+        firstNamePlaceholder: 'Entrez votre prénom',
+        joinEvent: 'Rejoindre l\'événement',
       },
       dateVoting: {
         title: 'Choisissez vos disponibilités',
@@ -831,6 +877,14 @@ export const translations: Record<Language, Translations> = {
         topActivity: 'Activité préférée',
         topLocation: 'Lieu préféré',
       },
+      organizerTasks: {
+        title: 'Assigner des tâches au groupe',
+        placeholder: 'Ex: Ramener des snacks, Réserver le lieu...',
+        add: 'Ajouter',
+        empty: 'Aucune tâche pour le moment. Ajoutez des tâches que les participants peuvent prendre en charge.',
+        errorAdding: 'Erreur lors de l\'ajout de la tâche',
+        errorDeleting: 'Erreur lors de la suppression de la tâche',
+      },
     },
     aiConcierge: {
       modeSelector: {
@@ -845,6 +899,15 @@ export const translations: Record<Language, Translations> = {
         generate: 'Lancer l\'idée ✨',
         generating: 'Création de votre événement...',
         quickAdd: 'Idées rapides :',
+        emptyPrompt: 'Décrivez votre idée d\'événement',
+        analyzing: 'Analyse de votre idée...',
+        creating: 'Création de votre événement...',
+        crafting: 'Création d\'options personnalisées...',
+        starterConcepts: 'Voici quelques pistes ! ✨',
+        tryAgain: 'Veuillez réessayer',
+        description: 'Décrivez votre idée en quelques mots. Précisez les dates, lieux ou participants — ou restez vague et laissez-nous vous aider !',
+        tryThese: 'Essayez :',
+        placeholderHint: 'Ex: \'Dîner d\'anniversaire vendredi en centre-ville\' ou \'Weekend en mai, gens de Berlin et Munich, avec enfants\'',
         waitingRoom: {
           title: 'Idée lancée !',
           subtitle: 'Envoyez ce lien à votre groupe. Je vous aiderai à décider du reste.',
@@ -867,6 +930,22 @@ export const translations: Record<Language, Translations> = {
           frontrunner: '{option} est en tête !',
         },
         finalize: 'Finaliser l\'événement',
+        noNewRequirements: 'Aucun nouveau souhait à intégrer',
+        scenariosUpdated: 'Scénarios mis à jour avec les nouveaux souhaits !',
+        errorUpdating: 'Erreur lors de la mise à jour des scénarios',
+        noVotesYet: 'Aucun vote pour le moment',
+        vetoWarningTitle: 'Attention',
+        vetoWarningFinalize: 'L\'option en tête a {count} veto(s). Vous devriez peut-être en discuter avec le groupe.',
+        errorFinalizing: 'Erreur',
+        decisionBarometer: 'Baromètre de décision',
+        haveVoted: 'ont voté',
+        aiRecommendation: 'Recommandation IA',
+        consensus: 'consensus',
+        removeVeto: 'Retirer le veto',
+        vetoOption: '🚫 Refuser cette option',
+        first: '1er',
+        second: '2ème',
+        third: '3ème',
         dateAvailability: {
           title: 'Choisissez vos disponibilités',
           available: 'Je suis dispo',
@@ -886,6 +965,11 @@ export const translations: Record<Language, Translations> = {
         taskSplitter: {
           title: 'Qui apporte quoi ?',
           claimTask: 'Je m\'en charge',
+          joinFirst: 'Rejoignez l\'événement d\'abord',
+          claimed: 'Tâche prise en charge !',
+          errorClaiming: 'Erreur lors de la prise en charge',
+          errorUpdating: 'Erreur lors de la mise à jour',
+          unclaim: 'Annuler',
         },
       },
     },
@@ -1243,6 +1327,10 @@ export const translations: Record<Language, Translations> = {
         orLogin: 'Log in',
         orCreateAccount: 'Create account',
         or: 'or',
+        invited: 'You\'ve been invited to join this event.',
+        firstName: 'Your first name',
+        firstNamePlaceholder: 'Enter your name',
+        joinEvent: 'Join the event',
       },
       dateVoting: {
         title: 'Choose your availability',
@@ -1328,6 +1416,14 @@ export const translations: Record<Language, Translations> = {
         topActivity: 'Top activity',
         topLocation: 'Top location',
       },
+      organizerTasks: {
+        title: 'Assign tasks to the group',
+        placeholder: 'e.g. Bring snacks, Book venue...',
+        add: 'Add',
+        empty: 'No tasks yet. Add tasks that participants can claim.',
+        errorAdding: 'Error adding task',
+        errorDeleting: 'Error deleting task',
+      },
     },
     aiConcierge: {
       modeSelector: {
@@ -1342,6 +1438,15 @@ export const translations: Record<Language, Translations> = {
         generate: 'Spark the Idea ✨',
         generating: 'Creating your event...',
         quickAdd: 'Quick ideas:',
+        emptyPrompt: 'Please describe your event idea',
+        analyzing: 'Analyzing your idea...',
+        creating: 'Creating your event...',
+        crafting: 'Crafting personalized options...',
+        starterConcepts: 'Here are some starter concepts! ✨',
+        tryAgain: 'Please try again',
+        description: 'Describe your event idea in a few words. Be specific about dates, locations, or who\'s coming — or keep it vague and let us help!',
+        tryThese: 'Try these:',
+        placeholderHint: 'e.g., \'Birthday dinner on Friday downtown\' or \'Weekend trip in May, people coming from Berlin and Munich, with kids\'',
         waitingRoom: {
           title: 'Idea Sparked!',
           subtitle: "Send this link to your group. I'll help everyone decide the rest.",
@@ -1364,6 +1469,22 @@ export const translations: Record<Language, Translations> = {
           frontrunner: '{option} is the frontrunner!',
         },
         finalize: 'Finalize Event',
+        noNewRequirements: 'No new requirements to integrate',
+        scenariosUpdated: 'Scenarios updated with new requirements!',
+        errorUpdating: 'Error updating scenarios',
+        noVotesYet: 'No votes yet',
+        vetoWarningTitle: 'Warning',
+        vetoWarningFinalize: 'The leading option has {count} veto(s). You may want to discuss with the group first.',
+        errorFinalizing: 'Error',
+        decisionBarometer: 'Decision Barometer',
+        haveVoted: 'have voted',
+        aiRecommendation: 'AI Recommendation',
+        consensus: 'consensus',
+        removeVeto: 'Remove veto',
+        vetoOption: '🚫 Veto this option',
+        first: '1st',
+        second: '2nd',
+        third: '3rd',
         dateAvailability: {
           title: 'Choose your availability',
           available: "I'm available",
@@ -1383,6 +1504,11 @@ export const translations: Record<Language, Translations> = {
         taskSplitter: {
           title: "Who's bringing what?",
           claimTask: "I'll do this",
+          joinFirst: 'Join the event first',
+          claimed: 'Task claimed!',
+          errorClaiming: 'Error claiming task',
+          errorUpdating: 'Error updating task',
+          unclaim: 'Unclaim',
         },
       },
     },

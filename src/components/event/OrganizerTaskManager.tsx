@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Task {
   id: string;
@@ -18,6 +19,7 @@ interface OrganizerTaskManagerProps {
 
 export const OrganizerTaskManager = ({ eventId }: OrganizerTaskManagerProps) => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTask, setNewTask] = useState('');
@@ -52,7 +54,7 @@ export const OrganizerTaskManager = ({ eventId }: OrganizerTaskManagerProps) => 
       setNewTask('');
       await fetchTasks();
     } catch {
-      toast({ title: 'Error adding task', variant: 'destructive' });
+      toast({ title: t.eventPage.organizerTasks.errorAdding, variant: 'destructive' });
     } finally {
       setIsAdding(false);
     }
@@ -69,7 +71,7 @@ export const OrganizerTaskManager = ({ eventId }: OrganizerTaskManagerProps) => 
       if (error) throw error;
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
     } catch {
-      toast({ title: 'Error deleting task', variant: 'destructive' });
+      toast({ title: t.eventPage.organizerTasks.errorDeleting, variant: 'destructive' });
     } finally {
       setDeletingId(null);
     }
@@ -90,7 +92,7 @@ export const OrganizerTaskManager = ({ eventId }: OrganizerTaskManagerProps) => 
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <ListTodo className="h-5 w-5" />
-                Assign tasks to the group
+                {t.eventPage.organizerTasks.title}
               </span>
               {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </CardTitle>
@@ -103,7 +105,7 @@ export const OrganizerTaskManager = ({ eventId }: OrganizerTaskManagerProps) => 
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="e.g. Bring snacks, Book venue..."
+                placeholder={t.eventPage.organizerTasks.placeholder}
                 className="flex-1"
                 disabled={isAdding}
               />
@@ -114,7 +116,7 @@ export const OrganizerTaskManager = ({ eventId }: OrganizerTaskManagerProps) => 
                 disabled={!newTask.trim() || isAdding}
               >
                 <Plus className="h-4 w-4 mr-1" />
-                Add
+                {t.eventPage.organizerTasks.add}
               </Button>
             </div>
 
@@ -142,7 +144,7 @@ export const OrganizerTaskManager = ({ eventId }: OrganizerTaskManagerProps) => 
 
             {tasks.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No tasks yet. Add tasks that participants can claim.
+                {t.eventPage.organizerTasks.empty}
               </p>
             )}
           </CardContent>

@@ -84,7 +84,7 @@ export const TaskSplitter = ({ eventId, participantId, participantName }: TaskSp
   const handleClaim = async (taskId: string) => {
     if (!participantId) {
       toast({
-        title: 'Join the event first',
+        title: t.aiConcierge?.lockdown?.taskSplitter?.joinFirst || 'Join the event first',
         variant: 'destructive',
       });
       return;
@@ -101,12 +101,12 @@ export const TaskSplitter = ({ eventId, participantId, participantName }: TaskSp
       if (error) throw error;
 
       toast({
-        title: 'Task claimed!',
+        title: t.aiConcierge?.lockdown?.taskSplitter?.claimed || 'Task claimed!',
       });
     } catch (error) {
       console.error('Error claiming task:', error);
       toast({
-        title: 'Error claiming task',
+        title: t.aiConcierge?.lockdown?.taskSplitter?.errorClaiming || 'Error claiming task',
         variant: 'destructive',
       });
     } finally {
@@ -127,7 +127,7 @@ export const TaskSplitter = ({ eventId, participantId, participantName }: TaskSp
     } catch (error) {
       console.error('Error unclaiming task:', error);
       toast({
-        title: 'Error updating task',
+        title: t.aiConcierge?.lockdown?.taskSplitter?.errorUpdating || 'Error updating task',
         variant: 'destructive',
       });
     } finally {
@@ -191,7 +191,7 @@ export const TaskSplitter = ({ eventId, participantId, participantName }: TaskSp
                         {claiming === task.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          'Unclaim'
+                          t.aiConcierge?.lockdown?.taskSplitter?.unclaim || 'Unclaim'
                         )}
                       </Button>
                     )}
