@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Save, Check, Send } from 'lucide-react';
+import { Loader2, Save, Check, Send, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScenarioCard } from './ScenarioCard';
 import { ConsensusScore } from './ConsensusScore';
 import { ConstraintBadge } from './ConstraintBadge';
 import { GroupWishlist } from './GroupWishlist';
+import { SharePanel } from './SharePanel';
 import { AvailabilityPanel } from './AvailabilityPanel';
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -61,6 +64,8 @@ interface ContextAnalysis {
 
 interface PulseVotingProps {
   eventId: string;
+  eventSlug?: string;
+  eventTitle?: string;
   scenarios: Scenario[];
   participantId?: string;
   totalParticipants: number;
@@ -79,8 +84,154 @@ interface VoteState {
   };
 }
 
+// ── Voting UI (shared by both organizer Tab 1 and participant view) ──
+const VotingSection = ({
+  scenarios,
+  votes,
+  canVote,
+  isMobile,
+  isOrganizer,
+  rankedCount,
+  totalScenarios,
+  allRanked,
+  language,
+  constraints,
+  contextAnalysis,
+  handleRankChange,
+  handleDealbreakerToggle,
+  t,
+}: {
+  scenarios: Scenario[];
+  votes: VoteState;
+  canVote: boolean;
+  isMobile: boolean;
+  isOrganizer?: boolean;
+  rankedCount: number;
+  totalScenarios: number;
+  allRanked: boolean;
+  language: string;
+  constraints?: ContextAnalysis['constraints'];
+  contextAnalysis?: ContextAnalysis | null;
+  handleRankChange: (id: string, rank: number | null) => void;
+  handleDealbreakerToggle: (id: string) => void;
+  t: any;
+}) => (
+  <div className="space-y-6">
+    {/* Constraint badges */}
+    {constraints && (
+      <div className="flex flex-wrap gap-2 justify-center">
+        {constraints.date && (
+          <ConstraintBadge
+            type={constraints.date.type}
+            category="date"
+            displayLabel={constraints.date.displayLabel || (constraints.date.type === 'fixed' ? 'Date locked' : constraints.date.type === 'flexible' ? 'Vote on date' : 'Date TBD')}
+          />
+        )}
+        {constraints.location && (
+          <ConstraintBadge
+            type={constraints.location.type}
+            category="location"
+            displayLabel={constraints.location.displayLabel || (constraints.location.type === 'fixed' ? 'Location set' : constraints.location.type === 'flexible' ? 'Vote on location' : 'Location TBD')}
+          />
+        )}
+        {constraints.time && constraints.time.type !== 'missing' && (
+          <ConstraintBadge
+            type={constraints.time.type}
+            category="time"
+            displayLabel={constraints.time.displayLabel || (constraints.time.type === 'fixed' ? 'Time locked' : 'Vote on time')}
+          />
+        )}
+      </div>
+    )}
+
+    {/* Instruction banner */}
+    {canVote && (
+      <div className="bg-muted/50 rounded-lg p-3 text-center">
+        <p className="text-lg font-medium text-foreground">
+          {language === 'fr'
+            ? 'Classez les options de 1 à 3 et signalez les impossibilités'
+            : 'Rank the options from 1 to 3 and flag any dealbreakers'}
+        </p>
+      </div>
+    )}
+
+    {/* Progress indicator */}
+    {canVote && (
+      <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: totalScenarios }).map((_, i) => (
+            <div
+              key={i}
+              className={cn(
+                'w-2.5 h-2.5 rounded-full transition-colors',
+                i < rankedCount
+                  ? (allRanked ? 'bg-green-500' : 'bg-primary')
+                  : 'bg-border'
+              )}
+            />
+          ))}
+        </div>
+        <p className={cn(
+          'text-sm',
+          allRanked ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'
+        )}>
+          {allRanked
+            ? (language === 'fr'
+              ? '✓ Classement complet — faites défiler pour vos disponibilités'
+              : '✓ Ranking complete — scroll down for availability')
+            : (language === 'fr'
+              ? `Vous avez classé ${rankedCount}/${totalScenarios} options`
+              : `You ranked ${rankedCount}/${totalScenarios} options`)}
+        </p>
+      </div>
+    )}
+
+    {/* Scenario cards */}
+    {isMobile ? (
+      <Carousel className="w-full" opts={{ align: 'start', loop: false }}>
+        <CarouselContent className="-ml-2">
+          {scenarios.map((scenario) => (
+            <CarouselItem key={scenario.id} className="pl-2 basis-[90%]">
+              <ScenarioCard
+                scenario={scenario}
+                rank={votes[scenario.id]?.rank ?? undefined}
+                isDealbreaker={votes[scenario.id]?.isDealbreaker}
+                onRankChange={(rank) => handleRankChange(scenario.id, rank)}
+                onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
+                isVotingEnabled={canVote}
+                showRanking={canVote}
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <div className="flex justify-center gap-2 mt-4">
+          <CarouselPrevious className="static translate-y-0" />
+          <CarouselNext className="static translate-y-0" />
+        </div>
+      </Carousel>
+    ) : (
+      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        {scenarios.map((scenario) => (
+          <ScenarioCard
+            key={scenario.id}
+            scenario={scenario}
+            rank={votes[scenario.id]?.rank ?? undefined}
+            isDealbreaker={votes[scenario.id]?.isDealbreaker}
+            onRankChange={(rank) => handleRankChange(scenario.id, rank)}
+            onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
+            isVotingEnabled={canVote}
+            showRanking={canVote}
+          />
+        ))}
+      </div>
+    )}
+  </div>
+);
+
 export const PulseVoting = ({
   eventId,
+  eventSlug,
+  eventTitle,
   scenarios,
   participantId,
   totalParticipants,
@@ -104,46 +255,49 @@ export const PulseVoting = ({
   const [isSubmittingWish, setIsSubmittingWish] = useState(false);
   const [submittedWishes, setSubmittedWishes] = useState<Array<{ id: string; text: string }>>([]);
 
+  // Collapsible states for participant view
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
+  const [wishesOpen, setWishesOpen] = useState(false);
+
   const isDateFlexible = contextAnalysis?.constraints?.date?.type === 'flexible';
   const canVote = !!participantId;
   const constraints = contextAnalysis?.constraints;
 
-  // Count ranked scenarios
   const rankedCount = Object.values(votes).filter(v => v.rank !== null && !v.isDealbreaker).length;
   const totalScenarios = scenarios.length;
   const allRanked = rankedCount >= totalScenarios;
 
+  // Auto-expand availability when all ranked
+  useEffect(() => {
+    if (allRanked && !isOrganizer) {
+      setAvailabilityOpen(true);
+    }
+  }, [allRanked, isOrganizer]);
+
   // Load existing votes
   useEffect(() => {
     if (!participantId) return;
-
     const loadVotes = async () => {
       const { data } = await supabase
         .from('scenario_votes')
         .select('*')
         .eq('participant_id', participantId)
         .eq('event_id', eventId);
-
       if (data) {
         const voteState: VoteState = {};
         data.forEach((v) => {
-          voteState[v.scenario_id] = {
-            rank: v.rank,
-            isDealbreaker: v.is_dealbreaker,
-          };
+          voteState[v.scenario_id] = { rank: v.rank, isDealbreaker: v.is_dealbreaker };
         });
         setVotes(voteState);
         setSavedVotes(voteState);
       }
     };
-
     loadVotes();
   }, [participantId, eventId]);
 
   // Load submitted wishes
   useEffect(() => {
     if (!participantId) return;
-
     const loadWishes = async () => {
       const { data } = await supabase
         .from('participant_sparks')
@@ -151,18 +305,15 @@ export const PulseVoting = ({
         .eq('event_id', eventId)
         .eq('participant_id', participantId)
         .order('created_at', { ascending: false });
-
       if (data) {
         setSubmittedWishes(data.map(d => ({ id: d.id, text: d.spark_text })));
       }
     };
-
     loadWishes();
   }, [participantId, eventId]);
 
   const handleRankChange = (scenarioId: string, rank: number | null) => {
     const newVotes = { ...votes };
-
     if (rank !== null) {
       Object.keys(newVotes).forEach((id) => {
         if (id !== scenarioId && newVotes[id]?.rank === rank) {
@@ -170,13 +321,11 @@ export const PulseVoting = ({
         }
       });
     }
-
     newVotes[scenarioId] = {
       ...newVotes[scenarioId],
       rank,
       isDealbreaker: rank !== null ? false : newVotes[scenarioId]?.isDealbreaker || false,
     };
-
     setVotes(newVotes);
     setHasChanges(true);
   };
@@ -184,7 +333,6 @@ export const PulseVoting = ({
   const handleDealbreakerToggle = (scenarioId: string) => {
     const current = votes[scenarioId];
     const newIsDealbreaker = !current?.isDealbreaker;
-
     setVotes({
       ...votes,
       [scenarioId]: {
@@ -197,22 +345,12 @@ export const PulseVoting = ({
 
   const handleSave = async () => {
     if (!participantId) {
-      toast({
-        title: t.eventPage?.dateVoting?.joinFirst || 'Join the event to vote',
-        variant: 'destructive',
-      });
+      toast({ title: t.eventPage?.dateVoting?.joinFirst || 'Join the event to vote', variant: 'destructive' });
       return;
     }
-
     setIsSaving(true);
-
     try {
-      await supabase
-        .from('scenario_votes')
-        .delete()
-        .eq('participant_id', participantId)
-        .eq('event_id', eventId);
-
+      await supabase.from('scenario_votes').delete().eq('participant_id', participantId).eq('event_id', eventId);
       const votesToInsert = Object.entries(votes)
         .filter(([_, v]) => v.rank !== null || v.isDealbreaker)
         .map(([scenarioId, v]) => ({
@@ -222,27 +360,17 @@ export const PulseVoting = ({
           rank: v.rank,
           is_dealbreaker: v.isDealbreaker,
         }));
-
       if (votesToInsert.length > 0) {
-        const { error } = await supabase
-          .from('scenario_votes')
-          .insert(votesToInsert);
-
+        const { error } = await supabase.from('scenario_votes').insert(votesToInsert);
         if (error) throw error;
       }
-
       setSavedVotes(votes);
       setHasChanges(false);
-      toast({
-        title: t.eventPage?.dateVoting?.saved || 'Votes saved!',
-      });
+      toast({ title: t.eventPage?.dateVoting?.saved || 'Votes saved!' });
       onVote?.();
     } catch (error) {
       console.error('Error saving votes:', error);
-      toast({
-        title: t.eventPage?.dateVoting?.voteError || 'Error saving votes',
-        variant: 'destructive',
-      });
+      toast({ title: t.eventPage?.dateVoting?.voteError || 'Error saving votes', variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -250,7 +378,6 @@ export const PulseVoting = ({
 
   const handleSubmitWish = async () => {
     if (!participantId || !wishText.trim()) return;
-
     setIsSubmittingWish(true);
     try {
       const { data, error } = await supabase.from('participant_sparks').insert({
@@ -259,9 +386,7 @@ export const PulseVoting = ({
         spark_text: wishText.trim(),
         category: 'nice_to_have' as const,
       }).select('id, spark_text').single();
-
       if (error) throw error;
-
       if (data) {
         setSubmittedWishes(prev => [{ id: data.id, text: data.spark_text }, ...prev]);
       }
@@ -275,9 +400,194 @@ export const PulseVoting = ({
     }
   };
 
+  // ── Save button (shared) ──
+  const SaveButton = () => canVote ? (
+    <Button onClick={handleSave} disabled={!hasChanges || isSaving} className="w-full" size="lg">
+      {isSaving ? (
+        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t.eventPage?.dateVoting?.saving || 'Saving...'}</>
+      ) : hasChanges ? (
+        <><Save className="mr-2 h-4 w-4" />{t.eventPage?.dateVoting?.confirmAvailability || 'Save my votes'}</>
+      ) : (
+        <><Check className="mr-2 h-4 w-4" />{t.eventPage?.dateVoting?.saved || 'Saved'}</>
+      )}
+    </Button>
+  ) : null;
+
+  // ── Availability section (shared) ──
+  const AvailabilitySection = ({ collapsible }: { collapsible: boolean }) => {
+    if (!isDateFlexible) return null;
+
+    if (collapsible) {
+      return (
+        <Collapsible open={availabilityOpen} onOpenChange={setAvailabilityOpen}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+            <span className="text-sm font-medium text-foreground">
+              📅 {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
+            </span>
+            <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', availabilityOpen && 'rotate-180')} />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            <AvailabilityPanel eventId={eventId} participantId={participantId} disabled={!canVote} />
+          </CollapsibleContent>
+        </Collapsible>
+      );
+    }
+
+    return (
+      <>
+        <div className="relative flex items-center gap-4 py-2">
+          <Separator className="flex-1" />
+          <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+            {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
+          </span>
+          <Separator className="flex-1" />
+        </div>
+        <AvailabilityPanel eventId={eventId} participantId={participantId} disabled={!canVote} />
+      </>
+    );
+  };
+
+  // ── Wishes section (shared) ──
+  const WishesSection = ({ collapsible }: { collapsible: boolean }) => {
+    if (!canVote) return null;
+
+    const content = (
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          <Input
+            value={wishText}
+            onChange={(e) => setWishText(e.target.value.slice(0, 200))}
+            placeholder={language === 'fr' ? 'Une idée, une contrainte, un souhait...' : 'An idea, a constraint, a wish...'}
+            disabled={isSubmittingWish}
+            onKeyDown={(e) => { if (e.key === 'Enter' && wishText.trim()) handleSubmitWish(); }}
+          />
+          <Button onClick={handleSubmitWish} disabled={!wishText.trim() || isSubmittingWish} size="default">
+            {isSubmittingWish ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <><Send className="h-4 w-4 mr-1.5" />{language === 'fr' ? 'Envoyer' : 'Send'}</>
+            )}
+          </Button>
+        </div>
+        {submittedWishes.length > 0 && (
+          <ul className="space-y-1.5">
+            {submittedWishes.map((wish) => (
+              <li key={wish.id} className="text-sm text-muted-foreground flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span>{wish.text}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+
+    if (collapsible) {
+      return (
+        <Collapsible open={wishesOpen} onOpenChange={setWishesOpen}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+            <span className="text-sm font-medium text-foreground">
+              ✨ {language === 'fr' ? 'Une idée à ajouter ?' : 'Have an idea to add?'}
+            </span>
+            <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', wishesOpen && 'rotate-180')} />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            {content}
+          </CollapsibleContent>
+        </Collapsible>
+      );
+    }
+
+    return (
+      <>
+        <div className="relative flex items-center gap-4 py-2">
+          <Separator className="flex-1" />
+          <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+            {language === 'fr' ? 'Une idée à ajouter ?' : 'Have an idea to add?'}
+          </span>
+          <Separator className="flex-1" />
+        </div>
+        {content}
+      </>
+    );
+  };
+
+  const votingSectionProps = {
+    scenarios, votes, canVote, isMobile, isOrganizer, rankedCount, totalScenarios,
+    allRanked, language, constraints, contextAnalysis, handleRankChange, handleDealbreakerToggle, t,
+  };
+
+  // ══════════════════════════════════════════════
+  //  ORGANIZER VIEW — Tabbed interface
+  // ══════════════════════════════════════════════
+  if (isOrganizer) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold text-foreground">
+            {contextAnalysis?.isVague
+              ? (t.aiConcierge?.pulse?.starterTitle || 'Which Direction Feels Right?')
+              : (t.aiConcierge?.pulse?.title || 'Choose Your Preference')}
+          </h2>
+        </div>
+
+        <Tabs defaultValue="vote" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="vote">🗳️ {language === 'fr' ? 'Voter' : 'Vote'}</TabsTrigger>
+            <TabsTrigger value="results">📊 {language === 'fr' ? 'Résultats' : 'Results'}</TabsTrigger>
+            <TabsTrigger value="share">🔗 {language === 'fr' ? 'Partager' : 'Share'}</TabsTrigger>
+          </TabsList>
+
+          {/* Tab 1 — Vote */}
+          <TabsContent value="vote" className="space-y-6 mt-6">
+            <VotingSection {...votingSectionProps} />
+            <SaveButton />
+            <AvailabilitySection collapsible={false} />
+            <WishesSection collapsible={false} />
+          </TabsContent>
+
+          {/* Tab 2 — Results */}
+          <TabsContent value="results" className="space-y-6 mt-6">
+            <ConsensusScore
+              eventId={eventId}
+              scenarios={scenarios}
+              totalParticipants={totalParticipants}
+            />
+            <GroupWishlist
+              eventId={eventId}
+              isOrganizer={isOrganizer}
+              onRegenerateScenarios={onRegenerateScenarios}
+              isRegenerating={isRegenerating}
+              currentParticipantId={participantId}
+            />
+            <Button variant="default" size="lg" onClick={onFinalize} className="w-full">
+              {t.aiConcierge?.pulse?.finalize || 'Finalize Event'}
+            </Button>
+          </TabsContent>
+
+          {/* Tab 3 — Share */}
+          <TabsContent value="share" className="space-y-6 mt-6">
+            <SharePanel
+              eventId={eventId}
+              eventSlug={eventSlug || ''}
+              eventTitle={eventTitle}
+            />
+            <div className="text-center text-sm text-muted-foreground">
+              {language === 'fr'
+                ? `${totalParticipants} participant${totalParticipants > 1 ? 's' : ''}`
+                : `${totalParticipants} participant${totalParticipants > 1 ? 's' : ''}`}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════
+  //  PARTICIPANT VIEW — Single column, collapsible
+  // ══════════════════════════════════════════════
   return (
     <div className="space-y-6">
-      {/* A. Header */}
+      {/* Header */}
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold text-foreground">
           {contextAnalysis?.isVague
@@ -286,258 +596,10 @@ export const PulseVoting = ({
         </h2>
       </div>
 
-      {/* Constraint badges */}
-      {constraints && (
-        <div className="flex flex-wrap gap-2 justify-center">
-          {constraints.date && (
-            <ConstraintBadge
-              type={constraints.date.type}
-              category="date"
-              displayLabel={constraints.date.displayLabel || (constraints.date.type === 'fixed' ? 'Date locked' : constraints.date.type === 'flexible' ? 'Vote on date' : 'Date TBD')}
-            />
-          )}
-          {constraints.location && (
-            <ConstraintBadge
-              type={constraints.location.type}
-              category="location"
-              displayLabel={constraints.location.displayLabel || (constraints.location.type === 'fixed' ? 'Location set' : constraints.location.type === 'flexible' ? 'Vote on location' : 'Location TBD')}
-            />
-          )}
-          {constraints.time && constraints.time.type !== 'missing' && (
-            <ConstraintBadge
-              type={constraints.time.type}
-              category="time"
-              displayLabel={constraints.time.displayLabel || (constraints.time.type === 'fixed' ? 'Time locked' : 'Vote on time')}
-            />
-          )}
-        </div>
-      )}
-
-      {/* Layout: full-width for participants, with sidebar for organizers */}
-      <div className={cn(isOrganizer ? 'grid gap-6 lg:grid-cols-3' : '')}>
-        <div className={cn(isOrganizer ? 'lg:col-span-2' : '', 'space-y-6')}>
-
-          {/* B. Instruction banner */}
-          {canVote && (
-            <div className="bg-muted/50 rounded-lg p-3 text-center">
-              <p className="text-lg font-medium text-foreground">
-                {language === 'fr'
-                  ? 'Classez les options de 1 à 3 et signalez les impossibilités'
-                  : 'Rank the options from 1 to 3 and flag any dealbreakers'}
-              </p>
-            </div>
-          )}
-
-          {/* D. Voting progress indicator */}
-          {canVote && (
-            <div className="flex items-center justify-center gap-3">
-              <div className="flex items-center gap-1.5">
-                {Array.from({ length: totalScenarios }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      'w-2.5 h-2.5 rounded-full transition-colors',
-                      i < rankedCount
-                        ? (allRanked ? 'bg-green-500' : 'bg-primary')
-                        : 'bg-border'
-                    )}
-                  />
-                ))}
-              </div>
-              <p className={cn(
-                'text-sm',
-                allRanked ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'
-              )}>
-                {allRanked
-                  ? (language === 'fr'
-                    ? '✓ Classement complet — faites défiler pour vos disponibilités'
-                    : '✓ Ranking complete — scroll down for availability')
-                  : (language === 'fr'
-                    ? `Vous avez classé ${rankedCount}/${totalScenarios} options`
-                    : `You ranked ${rankedCount}/${totalScenarios} options`)}
-              </p>
-            </div>
-          )}
-
-          {/* C. Scenario cards */}
-          {isMobile ? (
-            <Carousel className="w-full" opts={{ align: 'start', loop: false }}>
-              <CarouselContent className="-ml-2">
-                {scenarios.map((scenario) => (
-                  <CarouselItem key={scenario.id} className="pl-2 basis-[90%]">
-                    <ScenarioCard
-                      scenario={scenario}
-                      rank={votes[scenario.id]?.rank ?? undefined}
-                      isDealbreaker={votes[scenario.id]?.isDealbreaker}
-                      onRankChange={(rank) => handleRankChange(scenario.id, rank)}
-                      onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
-                      isVotingEnabled={canVote}
-                      showRanking={canVote}
-                    />
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <div className="flex justify-center gap-2 mt-4">
-                <CarouselPrevious className="static translate-y-0" />
-                <CarouselNext className="static translate-y-0" />
-              </div>
-            </Carousel>
-          ) : (
-            <div className={cn(
-              'grid gap-4',
-              isOrganizer
-                ? 'sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2'
-                : 'sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-            )}>
-              {scenarios.map((scenario) => (
-                <ScenarioCard
-                  key={scenario.id}
-                  scenario={scenario}
-                  rank={votes[scenario.id]?.rank ?? undefined}
-                  isDealbreaker={votes[scenario.id]?.isDealbreaker}
-                  onRankChange={(rank) => handleRankChange(scenario.id, rank)}
-                  onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
-                  isVotingEnabled={canVote}
-                  showRanking={canVote}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Save button */}
-          {canVote && (
-            <Button
-              onClick={handleSave}
-              disabled={!hasChanges || isSaving}
-              className="w-full"
-              size="lg"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t.eventPage?.dateVoting?.saving || 'Saving...'}
-                </>
-              ) : hasChanges ? (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  {t.eventPage?.dateVoting?.confirmAvailability || 'Save my votes'}
-                </>
-              ) : (
-                <>
-                  <Check className="mr-2 h-4 w-4" />
-                  {t.eventPage?.dateVoting?.saved || 'Saved'}
-                </>
-              )}
-            </Button>
-          )}
-
-          {/* D. Availability section - after voting */}
-          {isDateFlexible && (
-            <>
-              <div className="relative flex items-center gap-4 py-2">
-                <Separator className="flex-1" />
-                <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                  {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
-                </span>
-                <Separator className="flex-1" />
-              </div>
-
-              <AvailabilityPanel
-                eventId={eventId}
-                participantId={participantId}
-                disabled={!canVote}
-              />
-            </>
-          )}
-
-          {/* E. Wishes section - always-visible input */}
-          {canVote && (
-            <>
-              <div className="relative flex items-center gap-4 py-2">
-                <Separator className="flex-1" />
-                <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                  {language === 'fr' ? 'Une idée à ajouter ?' : 'Have an idea to add?'}
-                </span>
-                <Separator className="flex-1" />
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <Input
-                    value={wishText}
-                    onChange={(e) => setWishText(e.target.value.slice(0, 200))}
-                    placeholder={language === 'fr' ? 'Une idée, une contrainte, un souhait...' : 'An idea, a constraint, a wish...'}
-                    disabled={isSubmittingWish}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && wishText.trim()) {
-                        handleSubmitWish();
-                      }
-                    }}
-                  />
-                  <Button
-                    onClick={handleSubmitWish}
-                    disabled={!wishText.trim() || isSubmittingWish}
-                    size="default"
-                  >
-                    {isSubmittingWish ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-1.5" />
-                        {language === 'fr' ? 'Envoyer' : 'Send'}
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Submitted wishes list */}
-                {submittedWishes.length > 0 && (
-                  <ul className="space-y-1.5">
-                    {submittedWishes.map((wish) => (
-                      <li key={wish.id} className="text-sm text-muted-foreground flex items-start gap-2">
-                        <span className="text-primary mt-0.5">•</span>
-                        <span>{wish.text}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Finalize button for organizers */}
-          {isOrganizer && (
-            <Button
-              variant="default"
-              size="lg"
-              onClick={onFinalize}
-              className="w-full"
-            >
-              {t.aiConcierge?.pulse?.finalize || 'Finalize Event'}
-            </Button>
-          )}
-        </div>
-
-        {/* Sidebar - organizer only */}
-        {isOrganizer && (
-          <div className="lg:col-span-1 space-y-4">
-            <div className="sticky top-4 space-y-4">
-              <ConsensusScore
-                eventId={eventId}
-                scenarios={scenarios}
-                totalParticipants={totalParticipants}
-              />
-              <GroupWishlist
-                eventId={eventId}
-                isOrganizer={isOrganizer}
-                onRegenerateScenarios={onRegenerateScenarios}
-                isRegenerating={isRegenerating}
-                currentParticipantId={participantId}
-              />
-            </div>
-          </div>
-        )}
-      </div>
+      <VotingSection {...votingSectionProps} />
+      <SaveButton />
+      <AvailabilitySection collapsible={true} />
+      <WishesSection collapsible={true} />
     </div>
   );
 };
