@@ -35,9 +35,12 @@ const dimensionLabels: Record<string, Record<string, string>> = {
 };
 
 const getAnswerKey = (q: ClarifyQuestion) => q.subStep || q.dimension;
+const UNDECIDED = '__undecided__';
 
 export const SparkClarify = ({ questions, answers, onAnswersChange, onDone, totalQuestions }: SparkClarifyProps) => {
   const { language } = useLanguage();
+  const undecidedLabel = language === 'fr' ? 'Je ne sais pas encore' : "I don't know yet";
+  const undecidedSummary = language === 'fr' ? 'À décider avec le groupe' : 'To decide with the group';
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(true);
   const [questionVisible, setQuestionVisible] = useState(false);
@@ -72,8 +75,17 @@ export const SparkClarify = ({ questions, answers, onAnswersChange, onDone, tota
     onAnswersChange({ ...answers, [key]: val });
   }, [answers, key, onAnswersChange]);
 
+  const selectUndecided = useCallback(() => {
+    setAnswer(UNDECIDED);
+  }, [setAnswer]);
+
   const toggleMultiSelect = useCallback((chip: string) => {
     const current = answers[key] || '';
+    // If currently undecided, clear and select this chip
+    if (current === UNDECIDED) {
+      setAnswer(chip);
+      return;
+    }
     const selected = current ? current.split(' · ') : [];
     
     // "Rien de particulier" logic
@@ -128,6 +140,7 @@ export const SparkClarify = ({ questions, answers, onAnswersChange, onDone, tota
         {questions.slice(0, currentIndex).map((q, i) => {
           const k = getAnswerKey(q);
           const val = answers[k] || '';
+          const displayVal = val === UNDECIDED ? undecidedSummary : val;
           const icon = dimensionIcons[q.dimension];
           const label = dimensionLabels[language === 'fr' ? 'fr' : 'en'][q.dimension];
           return (
@@ -138,7 +151,7 @@ export const SparkClarify = ({ questions, answers, onAnswersChange, onDone, tota
             >
               <span>{icon}</span>
               <span className="font-medium">{label} :</span>
-              <span className="truncate">{val}</span>
+              <span className="truncate">{displayVal}</span>
               <span className="text-primary">✓</span>
               <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
             </div>
@@ -172,34 +185,54 @@ export const SparkClarify = ({ questions, answers, onAnswersChange, onDone, tota
   );
 
   // Render WHO headcount sub-step
-  const renderHeadcountInput = () => (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3 justify-center">
-        <Button
-          variant="outline" size="icon" className="h-10 w-10"
-          onClick={() => {
-            const v = Math.max(2, headcount - 1);
-            setHeadcount(v);
-            setAnswer(`~${v}`);
-          }}
-        ><Minus className="w-4 h-4" /></Button>
-        <span className="text-2xl font-semibold w-12 text-center">{headcount}</span>
-        <Button
-          variant="outline" size="icon" className="h-10 w-10"
-          onClick={() => {
-            const v = Math.min(50, headcount + 1);
-            setHeadcount(v);
-            setAnswer(`~${v}`);
-          }}
-        ><Plus className="w-4 h-4" /></Button>
+  const renderHeadcountInput = () => {
+    const isUndecidedSelected = currentAnswer === UNDECIDED;
+    return (
+      <div className="space-y-3">
+        {!isUndecidedSelected && (
+          <>
+            <div className="flex items-center gap-3 justify-center">
+              <Button
+                variant="outline" size="icon" className="h-10 w-10"
+                onClick={() => {
+                  const v = Math.max(2, headcount - 1);
+                  setHeadcount(v);
+                  setAnswer(`~${v}`);
+                }}
+              ><Minus className="w-4 h-4" /></Button>
+              <span className="text-2xl font-semibold w-12 text-center">{headcount}</span>
+              <Button
+                variant="outline" size="icon" className="h-10 w-10"
+                onClick={() => {
+                  const v = Math.min(50, headcount + 1);
+                  setHeadcount(v);
+                  setAnswer(`~${v}`);
+                }}
+              ><Plus className="w-4 h-4" /></Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              {language === 'fr'
+                ? 'Une estimation suffit, vous affinerez avec le groupe.'
+                : "A rough estimate is fine, you'll refine with the group."}
+            </p>
+          </>
+        )}
+        <div className="pt-1 flex justify-center">
+          <button
+            onClick={selectUndecided}
+            className={`px-4 py-2.5 text-sm rounded-full transition-all min-h-[44px] sm:min-h-0
+              ${isUndecidedSelected
+                ? 'border-2 border-primary bg-primary/10 text-primary font-medium'
+                : 'border border-dashed border-border text-muted-foreground hover:bg-muted'
+              }
+            `}
+          >
+            {undecidedLabel}
+          </button>
+        </div>
       </div>
-      <p className="text-xs text-muted-foreground text-center">
-        {language === 'fr'
-          ? 'Une estimation suffit, vous affinerez avec le groupe.'
-          : "A rough estimate is fine, you'll refine with the group."}
-      </p>
-    </div>
-  );
+    );
+  };
 
   // Determine if a question should use multi-select
   const isMultiSelect = (q: ClarifyQuestion): boolean => {
@@ -215,29 +248,49 @@ export const SparkClarify = ({ questions, answers, onAnswersChange, onDone, tota
   // Render chips (single or multi-select)
   const renderChips = (q: ClarifyQuestion) => {
     const multi = isMultiSelect(q);
+    const isUndecidedSelected = currentAnswer === UNDECIDED;
     return (
-      <div className="flex flex-wrap gap-2">
-        {q.chips?.map(chip => {
-          const selected = multi ? isChipSelected(chip) : currentAnswer === chip;
-          const nothingChip = language === 'fr' ? 'Rien de particulier' : 'Nothing specific';
-          const isNothing = chip === nothingChip;
-          return (
-            <button
-              key={chip}
-              onClick={() => multi ? toggleMultiSelect(chip) : setAnswer(chip)}
-              className={`px-4 py-2.5 text-sm rounded-full transition-all min-h-[44px] sm:min-h-0
-                ${selected
-                  ? 'border-2 border-primary bg-primary/10 text-primary font-medium'
-                  : `border border-border bg-background text-foreground hover:bg-muted ${isNothing ? 'font-medium' : ''}`
-                }
-                max-w-full sm:max-w-none
-              `}
-              style={{ flexBasis: q.chips && q.chips.length <= 2 ? '100%' : undefined }}
-            >
-              {chip}
-            </button>
-          );
-        })}
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-2">
+          {q.chips?.map(chip => {
+            const selected = isUndecidedSelected ? false : (multi ? isChipSelected(chip) : currentAnswer === chip);
+            const nothingChip = language === 'fr' ? 'Rien de particulier' : 'Nothing specific';
+            const isNothing = chip === nothingChip;
+            return (
+              <button
+                key={chip}
+                onClick={() => {
+                  if (multi) toggleMultiSelect(chip);
+                  else setAnswer(chip);
+                }}
+                className={`px-4 py-2.5 text-sm rounded-full transition-all min-h-[44px] sm:min-h-0
+                  ${selected
+                    ? 'border-2 border-primary bg-primary/10 text-primary font-medium'
+                    : `border border-border bg-background text-foreground hover:bg-muted ${isNothing ? 'font-medium' : ''}`
+                  }
+                  max-w-full sm:max-w-none
+                `}
+                style={{ flexBasis: q.chips && q.chips.length <= 2 ? '100%' : undefined }}
+              >
+                {chip}
+              </button>
+            );
+          })}
+        </div>
+        {/* Undecided chip */}
+        <div className="pt-1">
+          <button
+            onClick={selectUndecided}
+            className={`px-4 py-2.5 text-sm rounded-full transition-all min-h-[44px] sm:min-h-0
+              ${isUndecidedSelected
+                ? 'border-2 border-primary bg-primary/10 text-primary font-medium'
+                : 'border border-dashed border-border text-muted-foreground hover:bg-muted'
+              }
+            `}
+          >
+            {undecidedLabel}
+          </button>
+        </div>
       </div>
     );
   };

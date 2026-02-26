@@ -112,12 +112,17 @@ export const SparkPhase = ({ onEventCreated, userId, onBack }: SparkPhaseProps) 
   const [alreadyKnown, setAlreadyKnown] = useState<Record<string, string | null>>({});
   const [generationStep, setGenerationStep] = useState('');
 
+  const resolveAnswer = (val: string | undefined) => {
+    if (!val || val === '__undecided__') return '';
+    return val;
+  };
+
   const buildStructuredContext = (): StructuredContext => ({
-    when: alreadyKnown.when || answers.when || '',
-    who: alreadyKnown.who || answers.who || '',
-    what: alreadyKnown.what || answers.what || '',
-    where: alreadyKnown.where || answers.where || '',
-    budget: alreadyKnown.budget || answers.budget || '',
+    when: alreadyKnown.when || resolveAnswer(answers.when),
+    who: alreadyKnown.who || resolveAnswer(answers.who),
+    what: alreadyKnown.what || resolveAnswer(answers.what),
+    where: alreadyKnown.where || resolveAnswer(answers.where),
+    budget: alreadyKnown.budget || resolveAnswer(answers.budget),
   });
 
   const [structuredContext, setStructuredContext] = useState<StructuredContext>({
@@ -181,14 +186,15 @@ export const SparkPhase = ({ onEventCreated, userId, onBack }: SparkPhaseProps) 
   const handleClarifyDone = () => {
     // Merge WHO sub-step answers into a single "who" value
     const whoParts = [answers.who_count, answers.who_composition, answers.who_needs]
+      .map(v => resolveAnswer(v))
       .filter(Boolean)
       .join(' · ');
     const ctx: StructuredContext = {
-      when: alreadyKnown.when || answers.when || '',
-      who: alreadyKnown.who || whoParts || answers.who || '',
-      what: alreadyKnown.what || answers.what || '',
-      where: alreadyKnown.where || answers.where || '',
-      budget: alreadyKnown.budget || answers.budget || '',
+      when: alreadyKnown.when || resolveAnswer(answers.when),
+      who: alreadyKnown.who || whoParts || resolveAnswer(answers.who),
+      what: alreadyKnown.what || resolveAnswer(answers.what),
+      where: alreadyKnown.where || resolveAnswer(answers.where),
+      budget: alreadyKnown.budget || resolveAnswer(answers.budget),
     };
     setStructuredContext(ctx);
     setPhase('summary');
