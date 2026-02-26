@@ -42,32 +42,29 @@ const generateId = () => Math.random().toString(36).substring(2, 10);
 const CreateEvent = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  
+
   const [user, setUser] = useState<User | null>(null);
   const [selectedMode, setSelectedMode] = useState<OrganizationMode | null>(null);
   const [aiEventCreated, setAiEventCreated] = useState<{ id: string; slug: string; title?: string } | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdEvent, setCreatedEvent] = useState<{ id: string; slug: string } | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [datePeriods, setDatePeriods] = useState<DatePeriod[]>([
     { id: generateId(), startDate: undefined, endDate: undefined },
   ]);
   const [decideLaterDate, setDecideLaterDate] = useState(false);
   const [decideLaterLocation, setDecideLaterLocation] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -102,7 +99,6 @@ const CreateEvent = () => {
 
   const validateStep2 = (): boolean => {
     if (decideLaterDate) return true;
-
     if (eventType === 'day_event') {
       if (selectedDates.length === 0) {
         toast.error(t.createEvent.form.validation.minOneDateRequired);
@@ -120,32 +116,26 @@ const CreateEvent = () => {
 
   const handleNext = () => {
     if (currentStep === 1 && !validateStep1()) return;
-    setCurrentStep(2);
+    setCurrentStep((prev) => Math.min(prev + 1, 2));
   };
 
   const handleBack = () => {
     if (currentStep === 1) {
       setSelectedMode(null);
     } else {
-      setCurrentStep(1);
+      setCurrentStep((prev) => Math.max(prev - 1, 1));
     }
   };
 
   const handleSubmit = async () => {
-    if (!validateStep1()) {
-      setCurrentStep(1);
-      return;
-    }
-    if (!validateStep2()) {
-      return;
-    }
+    if (!validateStep1()) { setCurrentStep(1); return; }
+    if (!validateStep2()) { setCurrentStep(2); return; }
 
     const values = form.getValues();
     setIsSubmitting(true);
 
     try {
       const slug = generateSlug();
-
       let dateRangeStart: Date | null = null;
       let dateRangeEnd: Date | null = null;
 
@@ -182,7 +172,6 @@ const CreateEvent = () => {
 
       if (eventError) throw eventError;
 
-      // Insert date options if dates were selected
       if (!decideLaterDate) {
         const dateOptionsToInsert =
           eventType === 'day_event'
@@ -203,12 +192,11 @@ const CreateEvent = () => {
           const { error: dateOptionsError } = await supabase
             .from('date_options')
             .insert(dateOptionsToInsert);
-
           if (dateOptionsError) throw dateOptionsError;
         }
       }
 
-      setCreatedEvent({ id: eventData.id, slug: slug });
+      setCreatedEvent({ id: eventData.id, slug });
     } catch (error) {
       console.error('Error creating event:', error);
       toast.error(t.createEvent.error);
@@ -218,12 +206,7 @@ const CreateEvent = () => {
   };
 
   const handleAIEventCreated = async (eventId: string, slug: string) => {
-    const { data } = await supabase
-      .from('events')
-      .select('title')
-      .eq('id', eventId)
-      .single();
-
+    const { data } = await supabase.from('events').select('title').eq('id', eventId).single();
     setAiEventCreated({ id: eventId, slug, title: data?.title });
   };
 
@@ -294,17 +277,14 @@ const CreateEvent = () => {
     );
   }
 
-  // Manual Mode - 2-step wizard
   return (
     <div className="container py-8 md:py-12">
       <div className="max-w-2xl mx-auto">
         <ProgressIndicator steps={steps} currentStep={currentStep} />
-
         <div className="bg-card rounded-3xl border border-border/50 shadow-sm p-6 md:p-10">
           <Form {...form}>
             <form onSubmit={(e) => e.preventDefault()}>
               {currentStep === 1 && <Step1NameAndVibe form={form} />}
-
               {currentStep === 2 && (
                 <Step2DateAndLocation
                   form={form}
@@ -318,7 +298,6 @@ const CreateEvent = () => {
                   setDecideLaterLocation={setDecideLaterLocation}
                 />
               )}
-
               <div className="flex items-center justify-between mt-10 pt-6 border-t border-border/50">
                 <Button
                   type="button"
@@ -329,8 +308,7 @@ const CreateEvent = () => {
                   <ArrowLeft className="h-4 w-4" />
                   {t.createEvent.wizard.back}
                 </Button>
-
-                {currentStep === 1 ? (
+                {currentStep < 2 ? (
                   <Button
                     type="button"
                     onClick={handleNext}
