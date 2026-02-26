@@ -53,6 +53,13 @@ export const ConsensusScore = ({ eventId, scenarios, totalParticipants }: Consen
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [topDate, setTopDate] = useState<TopDateInfo | null>(null);
 
+  const labels = {
+    decisionBarometer: t.aiConcierge?.pulse?.decisionBarometer || 'Decision Barometer',
+    haveVoted: t.aiConcierge?.pulse?.haveVoted || 'have voted',
+    aiRecommendation: t.aiConcierge?.pulse?.aiRecommendation || 'AI Recommendation',
+    consensus: t.aiConcierge?.pulse?.consensus || 'consensus',
+  };
+
   const calculateScores = async () => {
     const { data: votes } = await supabase
       .from('scenario_votes')
@@ -330,7 +337,7 @@ export const ConsensusScore = ({ eventId, scenarios, totalParticipants }: Consen
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <TrendingUp className="h-5 w-5 text-primary" />
-          Decision Barometer
+          {labels.decisionBarometer}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -339,7 +346,7 @@ export const ConsensusScore = ({ eventId, scenarios, totalParticipants }: Consen
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-1 text-muted-foreground">
               <Users className="h-4 w-4" />
-              {votersCount}/{totalParticipants} have voted
+              {votersCount}/{totalParticipants} {labels.haveVoted}
             </span>
             <span className="font-medium">{Math.round(progressPercent)}%</span>
           </div>
@@ -354,7 +361,7 @@ export const ConsensusScore = ({ eventId, scenarios, totalParticipants }: Consen
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="h-3 w-3" />
-                  <span className="text-xs font-medium uppercase tracking-wide">AI Recommendation</span>
+                  <span className="text-xs font-medium uppercase tracking-wide">{labels.aiRecommendation}</span>
                 </div>
                 <AlertDescription className="text-sm">
                   {recommendation.message}
@@ -404,7 +411,7 @@ export const ConsensusScore = ({ eventId, scenarios, totalParticipants }: Consen
                   variant={frontrunner.consensusPercent >= 60 ? 'default' : 'secondary'}
                   className="ml-2"
                 >
-                  {frontrunner.consensusPercent}% consensus
+                  {frontrunner.consensusPercent}% {labels.consensus}
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground">

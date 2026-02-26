@@ -41,7 +41,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
   const handleGenerate = async () => {
     if (!sparkPrompt.trim()) {
       toast({
-        title: 'Please describe your event idea',
+        title: t.aiConcierge?.spark?.emptyPrompt || 'Please describe your event idea',
         variant: 'destructive',
       });
       return;
@@ -51,7 +51,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
 
     try {
       // Step 1: Analyze context for constraints
-      setGenerationStep('Analyzing your idea...');
+      setGenerationStep(t.aiConcierge?.spark?.analyzing || 'Analyzing your idea...');
       const { data: contextResponse, error: contextError } = await supabase.functions.invoke('ai-event-assistant', {
         body: {
           action: 'analyze-context',
@@ -66,7 +66,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
       console.log('Context analysis:', contextAnalysis);
 
       // Step 2: Generate draft based on analysis
-      setGenerationStep('Creating your event...');
+      setGenerationStep(t.aiConcierge?.spark?.creating || 'Creating your event...');
       const { data: aiResponse, error: aiError } = await supabase.functions.invoke('ai-event-assistant', {
         body: {
           action: 'generate-draft',
@@ -110,7 +110,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
       if (eventError) throw eventError;
 
       // Step 3: Generate context-aware scenarios
-      setGenerationStep('Crafting personalized options...');
+      setGenerationStep(t.aiConcierge?.spark?.crafting || 'Crafting personalized options...');
       const { data: scenarioResponse, error: scenarioError } = await supabase.functions.invoke('ai-event-assistant', {
         body: {
           action: 'generate-scenarios',
@@ -193,7 +193,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
 
       toast({
         title: contextAnalysis.isVague 
-          ? "Here are some starter concepts! ✨" 
+          ? (t.aiConcierge?.spark?.starterConcepts || "Here are some starter concepts! ✨") 
           : t.aiConcierge?.spark?.waitingRoom?.title || 'Idea Sparked! ✨',
       });
 
@@ -203,7 +203,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
       console.error('Error creating AI event:', error);
       toast({
         title: t.createEvent?.error || 'Error creating event',
-        description: error instanceof Error ? error.message : 'Please try again',
+        description: error instanceof Error ? error.message : (t.aiConcierge?.spark?.tryAgain || 'Please try again'),
         variant: 'destructive',
       });
     } finally {
@@ -222,7 +222,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
           {t.aiConcierge?.spark?.title || "What's the vibe?"}
         </h2>
         <p className="text-muted-foreground max-w-md mx-auto">
-          Describe your event idea in a few words. Be specific about dates, locations, or who's coming - or keep it vague and let us help!
+          {t.aiConcierge?.spark?.description || 'Describe your event idea in a few words. Be specific about dates, locations, or who\'s coming — or keep it vague and let us help!'}
         </p>
       </div>
 
@@ -231,7 +231,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
           <Textarea
             value={sparkPrompt}
             onChange={(e) => setSparkPrompt(e.target.value)}
-            placeholder="e.g., 'Birthday dinner on Friday downtown' or 'Weekend trip in May, people coming from Berlin and Munich, with kids'"
+            placeholder={t.aiConcierge?.spark?.placeholderHint || "e.g., 'Birthday dinner on Friday downtown' or 'Weekend trip in May, people coming from Berlin and Munich, with kids'"}
             className="min-h-[120px] text-lg border-none bg-transparent resize-none focus-visible:ring-0 placeholder:text-muted-foreground/60"
             disabled={isGenerating}
           />
@@ -242,7 +242,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
       <div className="flex flex-wrap gap-2 justify-center">
         <span className="text-sm text-muted-foreground flex items-center gap-1">
           <Lightbulb className="w-4 h-4" />
-          Try these:
+          {t.aiConcierge?.spark?.tryThese || 'Try these:'}
         </span>
         {examples.map((example) => (
           <button

@@ -87,22 +87,22 @@ const EventWelcomeGate = ({ eventTitle, onJoin }: { eventTitle: string; onJoin: 
         <Card className="border-border/50 shadow-lg">
           <CardContent className="pt-8 pb-8 px-8 space-y-6 text-center">
             <h1 className="text-2xl font-bold text-foreground">{eventTitle}</h1>
-            <p className="text-muted-foreground">You've been invited to join this event.</p>
+            <p className="text-muted-foreground">{t.eventPage.join.invited}</p>
             <form onSubmit={handleSubmit} className="space-y-4 text-left">
               <div className="space-y-2">
-                <Label htmlFor="join-name">Your first name</Label>
+                <Label htmlFor="join-name">{t.eventPage.join.firstName}</Label>
                 <Input
                   id="join-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your name"
+                  placeholder={t.eventPage.join.firstNamePlaceholder}
                   autoFocus
                   disabled={isJoining}
                 />
               </div>
               <Button type="submit" className="w-full gap-2" size="lg" disabled={!name.trim() || isJoining}>
                 {isJoining ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-                Join the event
+                {t.eventPage.join.joinEvent}
               </Button>
             </form>
           </CardContent>
@@ -200,7 +200,7 @@ const Event = () => {
         .eq('is_integrated', false);
 
       if (!sparks || sparks.length === 0) {
-        toast({ title: 'No new requirements to integrate', variant: 'destructive' });
+        toast({ title: t.aiConcierge.pulse.noNewRequirements, variant: 'destructive' });
         setIsRegenerating(false);
         return;
       }
@@ -327,10 +327,10 @@ const Event = () => {
         setScenarios(refreshedScenarios as AIScenario[]);
       }
 
-      toast({ title: 'Scenarios updated with new requirements!' });
+      toast({ title: t.aiConcierge.pulse.scenariosUpdated });
     } catch (error) {
       console.error('Error regenerating scenarios:', error);
-      toast({ title: 'Error updating scenarios', variant: 'destructive' });
+      toast({ title: t.aiConcierge.pulse.errorUpdating, variant: 'destructive' });
     } finally {
       setIsRegenerating(false);
     }
@@ -346,7 +346,7 @@ const Event = () => {
         .eq('event_id', event.id);
 
       if (!votes || votes.length === 0) {
-        toast({ title: 'No votes yet', variant: 'destructive' });
+        toast({ title: t.aiConcierge.pulse.noVotesYet, variant: 'destructive' });
         return;
       }
 
@@ -388,8 +388,8 @@ const Event = () => {
       const winnerData = scoreMap.get(winnerId);
       if (winnerData && winnerData.dealbreakers > 0) {
         toast({ 
-          title: 'Warning', 
-          description: `The leading option has ${winnerData.dealbreakers} veto(s). You may want to discuss with the group first.`,
+          title: t.aiConcierge.pulse.vetoWarningTitle, 
+          description: t.aiConcierge.pulse.vetoWarningFinalize.replace('{count}', String(winnerData.dealbreakers)),
           variant: 'destructive' 
         });
         return;
@@ -405,7 +405,7 @@ const Event = () => {
       refetch();
     } catch (err) {
       console.error('Error finalizing:', err);
-      toast({ title: 'Error', variant: 'destructive' });
+      toast({ title: t.aiConcierge.pulse.errorFinalizing, variant: 'destructive' });
     }
   };
 

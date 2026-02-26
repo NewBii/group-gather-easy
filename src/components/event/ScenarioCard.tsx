@@ -102,7 +102,21 @@ export const ScenarioCard = ({
   showRanking = true,
   matchedSparks = [],
 }: ScenarioCardProps) => {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
+
+  const timeLabelsMap: Record<string, string> = language === 'fr'
+    ? { morning: '🌅 Matin', afternoon: '☀️ Après-midi', evening: '🌙 Soirée' }
+    : { morning: '🌅 Morning', afternoon: '☀️ Afternoon', evening: '🌙 Evening' };
+
+  const vibeLabelsMap: Record<string, string> = language === 'fr'
+    ? { casual: 'Décontracté', active: 'Dynamique', relaxed: 'Détente', formal: 'Formel' }
+    : { casual: 'Casual', active: 'Active', relaxed: 'Relaxed', formal: 'Formal' };
+
+  const rankLabels = [
+    t.aiConcierge?.pulse?.first || '1st',
+    t.aiConcierge?.pulse?.second || '2nd',
+    t.aiConcierge?.pulse?.third || '3rd',
+  ];
   const time = scenario.suggested_time_of_day as keyof typeof timeIcons;
   const vibe = scenario.suggested_vibe as keyof typeof vibeIcons;
   const TimeIcon = time ? timeIcons[time]?.icon : null;
@@ -194,12 +208,12 @@ export const ScenarioCard = ({
               )}
             >
               {isTimeLocked && <Lock className="h-3 w-3 mr-1" />}
-              {timeIcons[time].label}
+              {timeLabelsMap[time] || timeIcons[time].label}
             </Badge>
           )}
           {VibeConfig && (
             <Badge className={VibeConfig.color}>
-              {VibeConfig.label}
+              {vibeLabelsMap[vibe] || VibeConfig.label}
             </Badge>
           )}
         </div>
@@ -299,7 +313,7 @@ export const ScenarioCard = ({
                   className="flex-1 h-11 md:h-9 text-base md:text-sm"
                   disabled={isDealbreaker}
                 >
-                  {r === 1 ? '1st' : r === 2 ? '2nd' : '3rd'}
+                  {rankLabels[r - 1]}
                 </Button>
               ))}
             </div>
@@ -311,7 +325,7 @@ export const ScenarioCard = ({
               className="w-full text-base md:text-sm h-11 md:h-9"
             >
               <Ban className="mr-2 h-4 w-4" />
-              {isDealbreaker ? 'Remove veto' : '🚫 Veto this option'}
+              {isDealbreaker ? (t.aiConcierge?.pulse?.removeVeto || 'Remove veto') : (t.aiConcierge?.pulse?.vetoOption || '🚫 Veto this option')}
             </Button>
           </div>
         )}
