@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Save, Check, Send, ChevronDown } from 'lucide-react';
+import { Loader2, Save, Check, Send, ChevronDown, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -530,22 +530,18 @@ export const PulseVoting = ({
           </h2>
         </div>
 
-        <Tabs defaultValue="vote" className="w-full">
+        {/* Voting cards + save — always visible */}
+        <VotingSection {...votingSectionProps} />
+        <SaveButton />
+
+        {/* Tabs below cards */}
+        <Tabs defaultValue="results" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="vote">🗳️ {language === 'fr' ? 'Voter' : 'Vote'}</TabsTrigger>
             <TabsTrigger value="results">📊 {language === 'fr' ? 'Résultats' : 'Results'}</TabsTrigger>
             <TabsTrigger value="share">🔗 {language === 'fr' ? 'Partager' : 'Share'}</TabsTrigger>
+            <TabsTrigger value="availability">📅 {language === 'fr' ? 'Disponibilités' : 'Availability'}</TabsTrigger>
           </TabsList>
 
-          {/* Tab 1 — Vote */}
-          <TabsContent value="vote" className="space-y-6 mt-6">
-            <VotingSection {...votingSectionProps} />
-            <SaveButton />
-            <AvailabilitySection collapsible={false} />
-            <WishesSection collapsible={false} />
-          </TabsContent>
-
-          {/* Tab 2 — Results */}
           <TabsContent value="results" className="space-y-6 mt-6">
             <ConsensusScore
               eventId={eventId}
@@ -564,7 +560,6 @@ export const PulseVoting = ({
             </Button>
           </TabsContent>
 
-          {/* Tab 3 — Share */}
           <TabsContent value="share" className="space-y-6 mt-6">
             <SharePanel
               eventId={eventId}
@@ -576,8 +571,24 @@ export const PulseVoting = ({
                 ? `${totalParticipants} participant${totalParticipants > 1 ? 's' : ''}`
                 : `${totalParticipants} participant${totalParticipants > 1 ? 's' : ''}`}
             </div>
+            {eventSlug && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => window.location.href = `/event/${eventSlug}`}
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                {language === 'fr' ? "Voir l'événement" : 'View Event Page'}
+              </Button>
+            )}
+          </TabsContent>
+
+          <TabsContent value="availability" className="space-y-6 mt-6">
+            <AvailabilitySection collapsible={false} />
           </TabsContent>
         </Tabs>
+
+        <WishesSection collapsible={false} />
       </div>
     );
   }
