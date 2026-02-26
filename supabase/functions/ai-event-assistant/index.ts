@@ -30,7 +30,7 @@ const ANON_RATE_LIMIT_CONFIG: RateLimitConfig = {
 };
 
 // Actions that can be performed anonymously (no auth required)
-const PUBLIC_ACTIONS = ['analyze-context', 'generate-draft'];
+const PUBLIC_ACTIONS = ['analyze-context', 'generate-draft', 'clarify-context'];
 
 const sanitizeInput = (input: string): string => {
   if (typeof input !== 'string') return '';
@@ -87,7 +87,7 @@ serve(async (req) => {
     const body = await req.json();
     const { action, sparkPrompt, eventId, participantPreferences } = body;
 
-    const validActions = ['generate-draft', 'generate-scenarios', 'synthesize-winner', 'analyze-context', 'regenerate-scenarios'];
+    const validActions = ['generate-draft', 'generate-scenarios', 'synthesize-winner', 'analyze-context', 'regenerate-scenarios', 'clarify-context'];
     if (!validActions.includes(action)) {
       return new Response(
         JSON.stringify({ error: 'Invalid action' }),
@@ -156,7 +156,7 @@ serve(async (req) => {
     console.log(`AI Event Assistant - Action: ${action}, EventId: ${eventId}, User: ${userId || 'anonymous'}, IP: ${clientIP}`);
 
     let sanitizedSparkPrompt: string | undefined;
-    if (action === 'generate-draft' || action === 'generate-scenarios' || action === 'analyze-context' || action === 'regenerate-scenarios') {
+    if (action === 'generate-draft' || action === 'generate-scenarios' || action === 'analyze-context' || action === 'regenerate-scenarios' || action === 'clarify-context') {
       const promptValidation = validateSparkPrompt(sparkPrompt);
       if (!promptValidation.valid) {
         return new Response(
@@ -234,7 +234,74 @@ serve(async (req) => {
     let tools: any[] | undefined;
     let tool_choice: any | undefined;
 
-    if (action === 'analyze-context') {
+    if (action === 'clarify-context') {
+      messages = [
+        {
+          role: 'system',
+          content: `You are a friendly event planning assistant. The organizer described their event idea. Your job is to analyze what is ALREADY KNOWN and identify what is MISSING among these 5 dimensions:
+- WHEN (quand): Is there a fixed date, a flexible period, or nothing mentioned?
+- WHO (qui): Number of people, constraints (kids, dietary, mobility)?
+- WHAT (quoi): Type of event, activity, vibe?
+- WHERE (où): Fixed destination, open, midpoint?
+- BUDGET (combien): Per-person budget range?
+
+Rules:
+- Only ask about dimensions that are genuinely MISSING or UNCLEAR from the prompt.
+- If the organizer already mentioned "weekend in March with 6 friends", do NOT ask about When or Who.
+- Return at most 3 questions. Fewer is better.
+- For each question, suggest answer chips that make it easy to respond.
+- Write questions in a warm, conversational tone.
+- Detect the language of the prompt and respond in the same language.
+
+Today's date is ${new Date().toISOString().split('T')[0]}.`
+        },
+        {
+          role: 'user',
+          content: `Analyze this event idea and determine what's known vs missing: "${sanitizedSparkPrompt}"`
+        }
+      ];
+
+      tools = [{
+        type: 'function',
+        function: {
+          name: 'clarify_event_context',
+          description: 'Analyze what is known and return targeted clarifying questions for missing dimensions',
+          parameters: {
+            type: 'object',
+            properties: {
+              alreadyKnown: {
+                type: 'object',
+                properties: {
+                  when: { type: 'string', description: 'What is known about timing, or null if missing' },
+                  who: { type: 'string', description: 'What is known about participants, or null if missing' },
+                  what: { type: 'string', description: 'What is known about the event type/vibe, or null if missing' },
+                  where: { type: 'string', description: 'What is known about location, or null if missing' },
+                  budget: { type: 'string', description: 'What is known about budget, or null if missing' }
+                }
+              },
+              questionsToAsk: {
+                type: 'array',
+                maxItems: 3,
+                items: {
+                  type: 'object',
+                  properties: {
+                    dimension: { type: 'string', enum: ['when', 'who', 'what', 'where', 'budget'] },
+                    question: { type: 'string', description: 'A friendly, conversational question' },
+                    answerType: { type: 'string', enum: ['chips', 'text', 'chips+text'] },
+                    chips: { type: 'array', items: { type: 'string' }, description: 'Suggested quick-answer chips' }
+                  },
+                  required: ['dimension', 'question', 'answerType']
+                }
+              }
+            },
+            required: ['alreadyKnown', 'questionsToAsk'],
+            additionalProperties: false
+          }
+        }
+      }];
+      tool_choice = { type: 'function', function: { name: 'clarify_event_context' } };
+
+    } else if (action === 'analyze-context') {
       // Strategic Planner: Semantic analysis to distinguish FIXED constraints from VARIABLES
       messages = [
         {
