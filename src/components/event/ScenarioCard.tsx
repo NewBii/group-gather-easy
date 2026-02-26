@@ -1,4 +1,4 @@
-import { Ban } from 'lucide-react';
+import { Ban, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,13 @@ interface LocationInfo {
   [key: string]: any;
 }
 
+interface AccommodationInfo {
+  name?: string;
+  booking_url?: string;
+  airbnb_url?: string;
+  [key: string]: any;
+}
+
 interface ScenarioCardProps {
   scenario: {
     id: string;
@@ -55,7 +62,7 @@ interface ScenarioCardProps {
       special_traits?: SpecialTrait[];
       midpoint_info?: MidpointInfoData;
       date_is_flexible?: boolean;
-      accommodation?: any;
+      accommodation?: AccommodationInfo;
       budget?: BudgetInfo;
       location?: LocationInfo;
     } | null;
@@ -90,12 +97,13 @@ export const ScenarioCard = ({
   isVotingEnabled = true,
   showRanking = true,
 }: ScenarioCardProps) => {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const lang = language === 'fr' ? 'fr' : 'en';
 
   const metadata = scenario.metadata as ScenarioCardProps['scenario']['metadata'];
   const budget = metadata?.budget;
   const locationInfo = metadata?.location;
+  const accommodation = metadata?.accommodation;
   const vibe = scenario.suggested_vibe;
 
   const rankLabels = language === 'fr'
@@ -115,6 +123,11 @@ export const ScenarioCard = ({
   if (vibe && vibeEmojis[vibe]) {
     infoChips.push(`${vibeEmojis[vibe]} ${vibeLabels[lang]?.[vibe] || vibe}`);
   }
+
+  // Build booking links
+  const bookingUrl = accommodation?.booking_url;
+  const airbnbUrl = accommodation?.airbnb_url;
+  const hasBookingLinks = bookingUrl || airbnbUrl;
 
   return (
     <Card
@@ -161,9 +174,12 @@ export const ScenarioCard = ({
           </div>
         )}
 
-        {/* Vote buttons - most prominent element */}
+        {/* Vote buttons */}
         {showRanking && isVotingEnabled && (
           <div className="space-y-2 pt-3 border-t">
+            <p className="text-xs text-muted-foreground">
+              {language === 'fr' ? 'Votre classement personnel :' : 'Your personal ranking:'}
+            </p>
             <div className="grid grid-cols-3 gap-2">
               {[1, 2, 3].map((r) => (
                 <Button
@@ -183,7 +199,7 @@ export const ScenarioCard = ({
               ))}
             </div>
 
-            {/* Veto button - subtle, with tooltip */}
+            {/* Veto button */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -212,6 +228,43 @@ export const ScenarioCard = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          </div>
+        )}
+
+        {/* Booking/Airbnb links */}
+        {hasBookingLinks && (
+          <div className="space-y-1.5 pt-2 border-t">
+            <p className="text-xs text-muted-foreground">
+              {language === 'fr' ? "Explorer l'hébergement :" : 'Explore accommodation:'}
+            </p>
+            <div className="flex gap-2">
+              {bookingUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  asChild
+                >
+                  <a href={bookingUrl} target="_blank" rel="noopener noreferrer">
+                    Booking.com
+                    <ExternalLink className="ml-1.5 h-3 w-3" />
+                  </a>
+                </Button>
+              )}
+              {airbnbUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  asChild
+                >
+                  <a href={airbnbUrl} target="_blank" rel="noopener noreferrer">
+                    Airbnb
+                    <ExternalLink className="ml-1.5 h-3 w-3" />
+                  </a>
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </CardContent>

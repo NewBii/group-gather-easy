@@ -5,10 +5,8 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AIProgressStepper } from './AIProgressStepper';
-import { SharePanel } from '@/components/event/SharePanel';
 import { PulseVoting } from '@/components/event/PulseVoting';
 
-import { GroupWishlist } from '@/components/event/GroupWishlist';
 
 // Types matching PulseVoting component
 interface SpecialTrait {
@@ -428,6 +426,8 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
           {scenarios.length > 0 && participantId ? (
             <PulseVoting
               eventId={eventId}
+              eventSlug={eventSlug}
+              eventTitle={eventTitle}
               scenarios={scenarios}
               participantId={participantId}
               totalParticipants={participantCount}
@@ -464,21 +464,7 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
           )}
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-4">
-          {/* Share Panel */}
-          <SharePanel
-            eventId={eventId}
-            eventSlug={eventSlug}
-            eventTitle={eventTitle}
-            compact
-          />
-
-
-          {/* Group Wishlist */}
-          <GroupWishlist eventId={eventId} />
-
-          {/* View Full Event Page */}
           <Button
             variant="outline"
             className="w-full"
