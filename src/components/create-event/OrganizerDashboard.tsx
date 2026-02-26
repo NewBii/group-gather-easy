@@ -159,9 +159,9 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
           const storedParticipantId = sessionStorage.getItem(storageKey);
 
           if (storedParticipantId) {
-            // Verify it still exists in database
+            // Verify it still exists in database (use public view for anonymous access)
             const { data: existingParticipant } = await supabase
-              .from('participants')
+              .from('participants_public')
               .select('id')
               .eq('id', storedParticipantId)
               .maybeSingle();
