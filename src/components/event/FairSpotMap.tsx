@@ -49,7 +49,7 @@ export const FairSpotMap = ({ participants, eventId, fairSpotAddress }: FairSpot
       if (!eventId) return;
       
       const { data, error } = await supabase
-        .from('participants')
+        .from('participants_masked')
         .select('id, event_id, name, is_organizer, location_lat, location_lng, transport_mode, created_at')
         .eq('event_id', eventId)
         .not('location_lat', 'is', null)

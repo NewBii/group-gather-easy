@@ -77,7 +77,7 @@ export const LocationSection = ({
       if (!participantId || !event.id) return;
       
       const { data, error } = await supabase
-        .from('participants')
+        .from('participants_masked')
         .select('id, event_id, name, is_organizer, location_lat, location_lng, transport_mode, created_at')
         .eq('id', participantId)
         .single();
@@ -96,7 +96,7 @@ export const LocationSection = ({
       if (!event.id) return;
       
       const { data, error } = await supabase
-        .from('participants')
+        .from('participants_masked')
         .select('id, event_id, name, is_organizer, location_lat, location_lng, transport_mode, created_at')
         .eq('event_id', event.id)
         .not('location_lat', 'is', null)
@@ -312,7 +312,7 @@ export const LocationSection = ({
       // Refresh the current participant data
       if (participantId) {
         const { data } = await supabase
-          .from('participants')
+          .from('participants_masked')
           .select('id, event_id, name, is_organizer, location_lat, location_lng, transport_mode, created_at')
           .eq('id', participantId)
           .single();
