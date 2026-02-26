@@ -12,6 +12,7 @@ import { SparkSummary, type StructuredContext } from './spark/SparkSummary';
 interface SparkPhaseProps {
   onEventCreated: (eventId: string, slug: string) => void;
   userId?: string | null;
+  onBack?: () => void;
 }
 
 type Phase = 'input' | 'clarify' | 'summary' | 'generating';
@@ -99,7 +100,7 @@ const fallbackClarify = (prompt: string, lang: string): { alreadyKnown: Record<s
   return { alreadyKnown, questionsToAsk: questions };
 };
 
-export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
+export const SparkPhase = ({ onEventCreated, userId, onBack }: SparkPhaseProps) => {
   const { t, language } = useLanguage();
   const { toast } = useToast();
 
@@ -326,6 +327,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
   const handleBack = () => {
     if (phase === 'clarify') setPhase('input');
     else if (phase === 'summary') setPhase(clarifyingQuestions.length > 0 ? 'clarify' : 'input');
+    else if (phase === 'input' && onBack) onBack();
   };
 
   return (
@@ -361,7 +363,7 @@ export const SparkPhase = ({ onEventCreated, userId }: SparkPhaseProps) => {
         />
       )}
 
-      {(phase === 'clarify' || phase === 'summary') && (
+      {(phase === 'input' || phase === 'clarify' || phase === 'summary') && (
         <Button variant="ghost" onClick={handleBack} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
           {language === 'fr' ? 'Retour' : 'Back'}

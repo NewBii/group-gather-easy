@@ -260,17 +260,8 @@ const CreateEvent = () => {
             <SparkPhase
               onEventCreated={handleAIEventCreated}
               userId={user?.id}
+              onBack={() => setSelectedMode(null)}
             />
-            <div className="mt-6 flex justify-start">
-              <Button
-                variant="ghost"
-                onClick={() => setSelectedMode(null)}
-                className="gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                {t.createEvent.wizard.back}
-              </Button>
-            </div>
           </div>
         </div>
       </div>
