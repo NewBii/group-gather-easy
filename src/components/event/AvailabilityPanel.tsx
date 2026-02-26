@@ -289,7 +289,7 @@ export const AvailabilityPanel = ({
                         onClick={() => handleVote(dateOption.id, avail)}
                         disabled={!participantId || disabled || isSaving}
                         className={cn(
-                          'h-9 w-9 p-0 transition-all',
+                          'h-11 w-11 p-0 transition-all',
                           isActive ? config.activeClass : config.inactiveClass
                         )}
                       >

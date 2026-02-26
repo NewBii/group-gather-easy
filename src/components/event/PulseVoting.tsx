@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Save, Check, AlertTriangle } from 'lucide-react';
+import { Loader2, Save, Check, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 import { ScenarioCard } from './ScenarioCard';
 import { ConsensusScore } from './ConsensusScore';
 import { ConstraintBadge } from './ConstraintBadge';
-import { ParticipantVoice } from './ParticipantVoice';
 import { GroupWishlist } from './GroupWishlist';
-import { StickyProgressBar } from './StickyProgressBar';
 import { AvailabilityPanel } from './AvailabilityPanel';
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface SpecialTrait {
   type: 'kid_friendly' | 'accessibility' | 'dietary' | 'budget' | 'midpoint' | 'nightlife' | 'outdoor' | 'indoor';
@@ -72,16 +72,6 @@ interface PulseVotingProps {
   onVote?: () => void;
 }
 
-interface MatchedSpark {
-  id: string;
-  text: string;
-  participantName?: string;
-}
-
-interface ScenarioSparksMap {
-  [scenarioId: string]: MatchedSpark[];
-}
-
 interface VoteState {
   [scenarioId: string]: {
     rank: number | null;
@@ -101,20 +91,27 @@ export const PulseVoting = ({
   isRegenerating,
   onVote,
 }: PulseVotingProps) => {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [votes, setVotes] = useState<VoteState>({});
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [savedVotes, setSavedVotes] = useState<VoteState>({});
-  const [scenarioSparksMap, setScenarioSparksMap] = useState<ScenarioSparksMap>({});
-  const [sparksRefreshKey, setSparksRefreshKey] = useState(0);
-  const [votersCount, setVotersCount] = useState(0);
-  const [frontrunner, setFrontrunner] = useState<{ label: string; consensus: number } | null>(null);
 
-  // Check if date is flexible (needs availability voting)
+  // Wishes state
+  const [wishText, setWishText] = useState('');
+  const [isSubmittingWish, setIsSubmittingWish] = useState(false);
+  const [submittedWishes, setSubmittedWishes] = useState<Array<{ id: string; text: string }>>([]);
+
   const isDateFlexible = contextAnalysis?.constraints?.date?.type === 'flexible';
+  const canVote = !!participantId;
+  const constraints = contextAnalysis?.constraints;
+
+  // Count ranked scenarios
+  const rankedCount = Object.values(votes).filter(v => v.rank !== null && !v.isDealbreaker).length;
+  const totalScenarios = scenarios.length;
+  const allRanked = rankedCount >= totalScenarios;
 
   // Load existing votes
   useEffect(() => {
@@ -143,41 +140,25 @@ export const PulseVoting = ({
     loadVotes();
   }, [participantId, eventId]);
 
-  // Load matched sparks for scenarios
+  // Load submitted wishes
   useEffect(() => {
-    const loadMatchedSparks = async () => {
+    if (!participantId) return;
+
+    const loadWishes = async () => {
       const { data } = await supabase
         .from('participant_sparks')
-        .select(`
-          id,
-          spark_text,
-          integrated_into_scenario_id,
-          participant_id,
-          participants!inner(name)
-        `)
+        .select('id, spark_text')
         .eq('event_id', eventId)
-        .eq('is_integrated', true)
-        .not('integrated_into_scenario_id', 'is', null);
+        .eq('participant_id', participantId)
+        .order('created_at', { ascending: false });
 
       if (data) {
-        const sparksMap: ScenarioSparksMap = {};
-        data.forEach((spark: any) => {
-          const scenarioId = spark.integrated_into_scenario_id;
-          if (!sparksMap[scenarioId]) {
-            sparksMap[scenarioId] = [];
-          }
-          sparksMap[scenarioId].push({
-            id: spark.id,
-            text: spark.spark_text,
-            participantName: spark.participants?.name,
-          });
-        });
-        setScenarioSparksMap(sparksMap);
+        setSubmittedWishes(data.map(d => ({ id: d.id, text: d.spark_text })));
       }
     };
 
-    loadMatchedSparks();
-  }, [eventId, sparksRefreshKey]);
+    loadWishes();
+  }, [participantId, eventId]);
 
   const handleRankChange = (scenarioId: string, rank: number | null) => {
     const newVotes = { ...votes };
@@ -267,27 +248,45 @@ export const PulseVoting = ({
     }
   };
 
-  const canVote = !!participantId;
-  const constraints = contextAnalysis?.constraints;
-  const isStarterConcepts = contextAnalysis?.isVague;
+  const handleSubmitWish = async () => {
+    if (!participantId || !wishText.trim()) return;
+
+    setIsSubmittingWish(true);
+    try {
+      const { data, error } = await supabase.from('participant_sparks').insert({
+        event_id: eventId,
+        participant_id: participantId,
+        spark_text: wishText.trim(),
+        category: 'nice_to_have' as const,
+      }).select('id, spark_text').single();
+
+      if (error) throw error;
+
+      if (data) {
+        setSubmittedWishes(prev => [{ id: data.id, text: data.spark_text }, ...prev]);
+      }
+      setWishText('');
+      toast({ title: language === 'fr' ? 'Souhait envoyé !' : 'Wish sent!' });
+    } catch (error) {
+      console.error('Error submitting wish:', error);
+      toast({ title: language === 'fr' ? 'Erreur' : 'Error', variant: 'destructive' });
+    } finally {
+      setIsSubmittingWish(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* A. Header */}
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold text-foreground">
-          {isStarterConcepts 
+          {contextAnalysis?.isVague
             ? (t.aiConcierge?.pulse?.starterTitle || 'Which Direction Feels Right?')
             : (t.aiConcierge?.pulse?.title || 'Choose Your Preference')}
         </h2>
-        <p className="text-muted-foreground">
-          {isStarterConcepts
-            ? (t.aiConcierge?.pulse?.starterSubtitle || 'These are starter concepts to help the group find direction. Rank them or veto what doesn\'t work!')
-            : (t.aiConcierge?.pulse?.subtitle || 'Rank these options and veto any dealbreakers')}
-        </p>
       </div>
 
-      {/* Constraint badges - show what's locked vs flexible */}
+      {/* Constraint badges */}
       {constraints && (
         <div className="flex flex-wrap gap-2 justify-center">
           {constraints.date && (
@@ -314,38 +313,53 @@ export const PulseVoting = ({
         </div>
       )}
 
-      {/* Veto power info */}
-      {canVote && (
-        <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="text-amber-800 dark:text-amber-200">
-            <strong>{t.aiConcierge?.pulse?.vetoWarning || 'Your veto matters!'}</strong> {t.aiConcierge?.pulse?.vetoWarningDescription || 'Use it wisely - options with vetoes are heavily penalized. We\'re looking for something that works for everyone.'}
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Layout: full-width for participants, with sidebar for organizers */}
+      <div className={cn(isOrganizer ? 'grid gap-6 lg:grid-cols-3' : '')}>
+        <div className={cn(isOrganizer ? 'lg:col-span-2' : '', 'space-y-6')}>
 
-      {/* Sticky progress bar on mobile */}
-      {isMobile && (
-        <StickyProgressBar
-          votersCount={votersCount}
-          totalParticipants={totalParticipants}
-          frontrunnerLabel={frontrunner?.label}
-          frontrunnerConsensus={frontrunner?.consensus}
-        />
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Scenarios - Carousel on mobile, grid on desktop */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Dedicated Availability Panel (only if date is flexible) */}
-          {isDateFlexible && (
-            <AvailabilityPanel
-              eventId={eventId}
-              participantId={participantId}
-              disabled={!canVote}
-            />
+          {/* B. Instruction banner */}
+          {canVote && (
+            <div className="bg-muted/50 rounded-lg p-3 text-center">
+              <p className="text-lg font-medium text-foreground">
+                {language === 'fr'
+                  ? 'Classez les options de 1 à 3 et signalez les impossibilités'
+                  : 'Rank the options from 1 to 3 and flag any dealbreakers'}
+              </p>
+            </div>
           )}
 
+          {/* D. Voting progress indicator */}
+          {canVote && (
+            <div className="flex items-center justify-center gap-3">
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: totalScenarios }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      'w-2.5 h-2.5 rounded-full transition-colors',
+                      i < rankedCount
+                        ? (allRanked ? 'bg-green-500' : 'bg-primary')
+                        : 'bg-border'
+                    )}
+                  />
+                ))}
+              </div>
+              <p className={cn(
+                'text-sm',
+                allRanked ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'
+              )}>
+                {allRanked
+                  ? (language === 'fr'
+                    ? '✓ Classement complet — faites défiler pour vos disponibilités'
+                    : '✓ Ranking complete — scroll down for availability')
+                  : (language === 'fr'
+                    ? `Vous avez classé ${rankedCount}/${totalScenarios} options`
+                    : `You ranked ${rankedCount}/${totalScenarios} options`)}
+              </p>
+            </div>
+          )}
+
+          {/* C. Scenario cards */}
           {isMobile ? (
             <Carousel className="w-full" opts={{ align: 'start', loop: false }}>
               <CarouselContent className="-ml-2">
@@ -359,7 +373,6 @@ export const PulseVoting = ({
                       onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
                       isVotingEnabled={canVote}
                       showRanking={canVote}
-                      matchedSparks={scenarioSparksMap[scenario.id] || []}
                     />
                   </CarouselItem>
                 ))}
@@ -370,7 +383,12 @@ export const PulseVoting = ({
               </div>
             </Carousel>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+            <div className={cn(
+              'grid gap-4',
+              isOrganizer
+                ? 'sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2'
+                : 'sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+            )}>
               {scenarios.map((scenario) => (
                 <ScenarioCard
                   key={scenario.id}
@@ -381,47 +399,110 @@ export const PulseVoting = ({
                   onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
                   isVotingEnabled={canVote}
                   showRanking={canVote}
-                  matchedSparks={scenarioSparksMap[scenario.id] || []}
                 />
               ))}
             </div>
           )}
 
-          {/* Participant Voice input */}
-          {canVote && (
-            <ParticipantVoice
-              eventId={eventId}
-              participantId={participantId}
-              onSparkAdded={() => setSparksRefreshKey((k) => k + 1)}
-            />
-          )}
-
           {/* Save button */}
           {canVote && (
-            <div className="flex gap-4">
-              <Button
-                onClick={handleSave}
-                disabled={!hasChanges || isSaving}
-                className="flex-1"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t.eventPage?.dateVoting?.saving || 'Saving...'}
-                  </>
-                ) : hasChanges ? (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    {t.eventPage?.dateVoting?.confirmAvailability || 'Save my votes'}
-                  </>
-                ) : (
-                  <>
-                    <Check className="mr-2 h-4 w-4" />
-                    {t.eventPage?.dateVoting?.saved || 'Saved'}
-                  </>
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges || isSaving}
+              className="w-full"
+              size="lg"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t.eventPage?.dateVoting?.saving || 'Saving...'}
+                </>
+              ) : hasChanges ? (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  {t.eventPage?.dateVoting?.confirmAvailability || 'Save my votes'}
+                </>
+              ) : (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  {t.eventPage?.dateVoting?.saved || 'Saved'}
+                </>
+              )}
+            </Button>
+          )}
+
+          {/* D. Availability section - after voting */}
+          {isDateFlexible && (
+            <>
+              <div className="relative flex items-center gap-4 py-2">
+                <Separator className="flex-1" />
+                <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                  {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
+                </span>
+                <Separator className="flex-1" />
+              </div>
+
+              <AvailabilityPanel
+                eventId={eventId}
+                participantId={participantId}
+                disabled={!canVote}
+              />
+            </>
+          )}
+
+          {/* E. Wishes section - always-visible input */}
+          {canVote && (
+            <>
+              <div className="relative flex items-center gap-4 py-2">
+                <Separator className="flex-1" />
+                <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                  {language === 'fr' ? 'Une idée à ajouter ?' : 'Have an idea to add?'}
+                </span>
+                <Separator className="flex-1" />
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={wishText}
+                    onChange={(e) => setWishText(e.target.value.slice(0, 200))}
+                    placeholder={language === 'fr' ? 'Une idée, une contrainte, un souhait...' : 'An idea, a constraint, a wish...'}
+                    disabled={isSubmittingWish}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && wishText.trim()) {
+                        handleSubmitWish();
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={handleSubmitWish}
+                    disabled={!wishText.trim() || isSubmittingWish}
+                    size="default"
+                  >
+                    {isSubmittingWish ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-1.5" />
+                        {language === 'fr' ? 'Envoyer' : 'Send'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Submitted wishes list */}
+                {submittedWishes.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {submittedWishes.map((wish) => (
+                      <li key={wish.id} className="text-sm text-muted-foreground flex items-start gap-2">
+                        <span className="text-primary mt-0.5">•</span>
+                        <span>{wish.text}</span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-              </Button>
-            </div>
+              </div>
+            </>
           )}
 
           {/* Finalize button for organizers */}
@@ -437,23 +518,25 @@ export const PulseVoting = ({
           )}
         </div>
 
-        {/* Sidebar with Consensus Score and Group Wishlist */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="sticky top-4 space-y-4">
-            <ConsensusScore
-              eventId={eventId}
-              scenarios={scenarios}
-              totalParticipants={totalParticipants}
-            />
-            <GroupWishlist
-              eventId={eventId}
-              isOrganizer={isOrganizer}
-              onRegenerateScenarios={onRegenerateScenarios}
-              isRegenerating={isRegenerating}
-              currentParticipantId={participantId}
-            />
+        {/* Sidebar - organizer only */}
+        {isOrganizer && (
+          <div className="lg:col-span-1 space-y-4">
+            <div className="sticky top-4 space-y-4">
+              <ConsensusScore
+                eventId={eventId}
+                scenarios={scenarios}
+                totalParticipants={totalParticipants}
+              />
+              <GroupWishlist
+                eventId={eventId}
+                isOrganizer={isOrganizer}
+                onRegenerateScenarios={onRegenerateScenarios}
+                isRegenerating={isRegenerating}
+                currentParticipantId={participantId}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
