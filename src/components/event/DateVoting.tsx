@@ -16,11 +16,12 @@ interface DateVotingProps {
   dateVotes: DateVote[];
   participantId: string | undefined;
   participantsCount: number;
+  onVote?: () => void;
 }
 
 type VoteType = 'yes' | 'no' | 'maybe';
 
-export const DateVoting = ({ dateOptions, dateVotes, participantId, participantsCount }: DateVotingProps) => {
+export const DateVoting = ({ dateOptions, dateVotes, participantId, participantsCount, onVote }: DateVotingProps) => {
   const { t, language } = useLanguage();
   const { toast } = useToast();
   const [pendingVotes, setPendingVotes] = useState<Map<string, VoteType>>(new Map());
@@ -111,6 +112,7 @@ export const DateVoting = ({ dateOptions, dateVotes, participantId, participants
       await Promise.all(promises);
       setPendingVotes(new Map());
       toast({ title: t.eventPage.dateVoting.saved });
+      onVote?.();
     } catch (err) {
       console.error('Error saving votes:', err);
       toast({
