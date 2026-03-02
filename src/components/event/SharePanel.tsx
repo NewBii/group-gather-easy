@@ -118,59 +118,52 @@ export const SharePanel = ({ eventId, eventSlug, eventTitle, compact = false }: 
   }
 
   return (
-    <Card className="border-2 border-primary bg-gradient-to-br from-primary/5 to-transparent">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-center text-lg">
-          {t.aiConcierge?.spark?.waitingRoom?.shareLink || 'Share this link'}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-2 p-4 bg-background rounded-lg border">
-          <code className="flex-1 text-sm truncate font-mono">
-            {shareUrl}
-          </code>
-          <Button
-            variant={copied ? 'default' : 'outline'}
-            size="sm"
-            onClick={handleCopy}
-            className="shrink-0"
-          >
-            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          </Button>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-lg border">
+        <code className="flex-1 text-sm truncate font-mono">
+          {shareUrl}
+        </code>
+        <Button
+          variant={copied ? 'default' : 'outline'}
+          size="sm"
+          onClick={handleCopy}
+          className="shrink-0"
+        >
+          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        </Button>
+      </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="flex-1 min-w-[100px]" onClick={handleCopy}>
-            <Copy className="mr-2 h-4 w-4" />
-            {t.eventCreated?.copyLink || 'Copy'}
-          </Button>
-          <Button variant="outline" className="flex-1 min-w-[100px]" onClick={handleEmailShare}>
-            <Mail className="mr-2 h-4 w-4" />
-            {t.eventCreated?.shareByEmail || 'Email'}
-          </Button>
-          <Button 
-            variant="outline" 
-            className="flex-1 min-w-[100px] bg-green-500/10 hover:bg-green-500/20 border-green-500/30 text-green-700 dark:text-green-400" 
-            onClick={handleWhatsAppShare}
-          >
-            <MessageCircle className="mr-2 h-4 w-4" />
-            WhatsApp
-          </Button>
-        </div>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" className="flex-1 min-w-[100px]" onClick={handleCopy}>
+          <Copy className="mr-2 h-4 w-4" />
+          {t.eventCreated?.copyLink || 'Copy'}
+        </Button>
+        <Button variant="outline" className="flex-1 min-w-[100px]" onClick={handleEmailShare}>
+          <Mail className="mr-2 h-4 w-4" />
+          {t.eventCreated?.shareByEmail || 'Email'}
+        </Button>
+        <Button 
+          variant="outline" 
+          className="flex-1 min-w-[100px]" 
+          onClick={handleWhatsAppShare}
+        >
+          <MessageCircle className="mr-2 h-4 w-4" />
+          WhatsApp
+        </Button>
+      </div>
 
-        {/* Participant Counter */}
-        <div className="flex items-center justify-center gap-3 pt-2">
-          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-            <Users className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="text-xl font-bold text-foreground">{participantCount}</p>
-            <p className="text-xs text-muted-foreground">
-              {t.aiConcierge?.spark?.waitingRoom?.peopleJoined?.replace('{count}', String(participantCount)) || `${participantCount} people have joined`}
-            </p>
-          </div>
+      {/* Participant Counter */}
+      <div className="flex items-center justify-center gap-3 pt-2">
+        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+          <Users className="h-5 w-5 text-muted-foreground" />
         </div>
-      </CardContent>
-    </Card>
+        <div>
+          <p className="text-xl font-bold text-foreground">{participantCount}</p>
+          <p className="text-xs text-muted-foreground">
+            {t.aiConcierge?.spark?.waitingRoom?.peopleJoined?.replace('{count}', String(participantCount)) || `${participantCount} people have joined`}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 };
