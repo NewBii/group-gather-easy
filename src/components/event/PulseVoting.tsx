@@ -522,10 +522,9 @@ export const PulseVoting = ({
 
         {/* Organizer tools tabs */}
         <Tabs defaultValue="results" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="results">📊 {language === 'fr' ? 'Résultats' : 'Results'}</TabsTrigger>
             <TabsTrigger value="availability">📅 {language === 'fr' ? 'Disponibilités' : 'Availability'}</TabsTrigger>
-            <TabsTrigger value="share">🔗 {language === 'fr' ? 'Partager' : 'Share'}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="results" className="space-y-6 mt-6">
@@ -541,40 +540,20 @@ export const PulseVoting = ({
               isRegenerating={isRegenerating}
               currentParticipantId={participantId}
             />
-            <Button variant="default" size="lg" onClick={onFinalize} disabled={totalParticipants === 0} className="w-full">
-              {t.aiConcierge?.pulse?.finalize || (language === 'fr' ? 'Finaliser l\'événement' : 'Finalize Event')}
-            </Button>
-            {totalParticipants === 0 && (
-              <p className="text-xs text-muted-foreground text-center">
-                {language === 'fr' ? 'En attente des votes du groupe...' : 'Waiting for group votes...'}
-              </p>
+            {totalParticipants >= 2 && (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground text-center">
+                  ✓ {totalParticipants} {language === 'fr' ? 'participants ont voté · Prêt à finaliser' : 'participants voted · Ready to finalize'}
+                </p>
+                <Button variant="default" size="lg" onClick={onFinalize} className="w-full">
+                  {t.aiConcierge?.pulse?.finalize || (language === 'fr' ? 'Finaliser l\'événement' : 'Finalize Event')}
+                </Button>
+              </div>
             )}
           </TabsContent>
 
           <TabsContent value="availability" className="space-y-6 mt-6">
             <AvailabilityPanel eventId={eventId} participantId={participantId} disabled={!canVote} />
-          </TabsContent>
-
-          <TabsContent value="share" className="space-y-6 mt-6">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="default" size="lg" className="w-full">
-                  <Share2 className="mr-2 h-5 w-5" />
-                  {language === 'fr' ? 'Inviter mes amis à voter →' : 'Invite friends to vote →'}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>{language === 'fr' ? 'Partager l\'événement' : 'Share event'}</DialogTitle>
-                </DialogHeader>
-                <SharePanel eventId={eventId} eventSlug={eventSlug || ''} eventTitle={eventTitle} />
-              </DialogContent>
-            </Dialog>
-            <div className="text-center text-sm text-muted-foreground">
-              {language === 'fr'
-                ? `${totalParticipants} participant${totalParticipants > 1 ? 's' : ''}`
-                : `${totalParticipants} participant${totalParticipants > 1 ? 's' : ''}`}
-            </div>
           </TabsContent>
         </Tabs>
 
