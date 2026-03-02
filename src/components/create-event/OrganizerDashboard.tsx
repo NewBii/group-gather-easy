@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Loader2, RefreshCw, ExternalLink } from 'lucide-react';
+import { Loader2, RefreshCw, ExternalLink, Copy, Mail, MessageCircle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AIProgressStepper } from './AIProgressStepper';
 import { PulseVoting } from '@/components/event/PulseVoting';
+import { SharePanel } from '@/components/event/SharePanel';
 
 
 // Types matching PulseVoting component
@@ -71,6 +73,10 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
   const [isLoading, setIsLoading] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [aiPhase, setAiPhase] = useState<'spark' | 'pulse' | 'lockdown'>('spark');
+  const [hasLaunched, setHasLaunched] = useState(() => {
+    return sessionStorage.getItem(`launched-${eventId}`) === 'true';
+  });
+  const [copied, setCopied] = useState(false);
 
   // Fetch scenarios and register organizer as participant
   useEffect(() => {
@@ -402,15 +408,108 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
     );
   }
 
+  const handleLaunch = () => {
+    setHasLaunched(true);
+    sessionStorage.setItem(`launched-${eventId}`, 'true');
+  };
+
+  const shareUrl = `${window.location.origin}/event/${eventSlug}`;
+
+  const handleQuickCopy = async () => {
+    await navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    toast({ title: language === 'fr' ? 'Lien copié !' : 'Link copied!' });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleQuickEmail = () => {
+    const subject = encodeURIComponent(eventTitle || 'Join our event!');
+    const body = encodeURIComponent(`${shareUrl}`);
+    window.open(`mailto:?subject=${subject}&body=${body}`);
+  };
+
+  const handleQuickWhatsApp = () => {
+    const message = encodeURIComponent(`${eventTitle || 'Event'}: ${shareUrl}`);
+    window.open(`https://wa.me/?text=${message}`, '_blank');
+  };
+
+  // ── LAUNCH SCREEN ──
+  if (!hasLaunched && scenarios.length > 0 && participantId) {
+    return (
+      <div className="max-w-lg mx-auto space-y-6 py-8">
+        <AIProgressStepper currentPhase={aiPhase} />
+
+        {/* ① Celebration */}
+        <div className="text-center space-y-2">
+          <span className="text-5xl">🎉</span>
+          <h2 className="text-2xl font-bold text-foreground">
+            {language === 'fr' ? 'Votre événement est lancé !' : 'Your event is live!'}
+          </h2>
+          <p className="text-muted-foreground">
+            {language === 'fr'
+              ? 'Partagez le lien avec vos amis pour qu\'ils votent pour leur option préférée.'
+              : 'Share the link with your friends so they can vote for their favorite option.'}
+          </p>
+        </div>
+
+        {/* ② Vote nudge */}
+        <div className="text-center space-y-1">
+          <p className="text-sm text-muted-foreground">
+            {language === 'fr'
+              ? 'Vous avez déjà voté ? Sinon, faites-le en premier — ça prend 30 secondes.'
+              : 'Already voted? If not, go first — it takes 30 seconds.'}
+          </p>
+          <Button variant="link" className="text-sm" onClick={handleLaunch}>
+            {language === 'fr' ? 'Voir les options →' : 'See the options →'}
+          </Button>
+        </div>
+
+        {/* ③ Share panel */}
+        <Card className="border">
+          <CardContent className="pt-6">
+            <SharePanel eventId={eventId} eventSlug={eventSlug} eventTitle={eventTitle} />
+          </CardContent>
+        </Card>
+
+        {/* ④ Primary CTA */}
+        <Button variant="default" size="lg" className="w-full" onClick={handleLaunch}>
+          {language === 'fr' ? 'J\'ai partagé le lien → Voir le dashboard' : 'I shared the link → View dashboard'}
+        </Button>
+
+        {/* ⑤ Helper text */}
+        <p className="text-xs text-muted-foreground text-center">
+          {language === 'fr'
+            ? 'Vous pouvez revenir sur cette page à tout moment pour suivre les votes.'
+            : 'You can come back to this page anytime to track votes.'}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <AIProgressStepper currentPhase={aiPhase} />
 
+      {/* Compact persistent share bar */}
+      {hasLaunched && eventSlug && (
+        <div className="bg-muted/50 rounded-lg p-3 flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">🔗 {language === 'fr' ? 'Partagez avec vos amis' : 'Share with friends'}</span>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" onClick={handleQuickCopy}>
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleQuickEmail}>
+              <Mail className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleQuickWhatsApp}>
+              <MessageCircle className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
-          <span className="text-3xl">🎯</span>
-        </div>
         <div className="flex items-center justify-center gap-2">
           <h2 className="text-2xl font-bold text-foreground">
             {eventTitle || (t.aiConcierge?.spark?.waitingRoom?.title || 'Your Event is Ready!')}
@@ -426,9 +525,6 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
             </Button>
           )}
         </div>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          {t.aiConcierge?.pulse?.subtitle}
-        </p>
       </div>
 
       {/* Main Layout — single column */}
@@ -449,7 +545,7 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
           />
         ) : scenarios.length === 0 ? (
           <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed">
-          <p className="text-muted-foreground">
+            <p className="text-muted-foreground">
               {language === 'fr' ? 'Les scénarios sont en cours de génération...' : 'Scenarios are being generated...'}
             </p>
             <Button
