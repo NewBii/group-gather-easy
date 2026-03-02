@@ -37,8 +37,8 @@ export const AIProgressStepper = ({ currentPhase, className }: AIProgressStepper
   const currentIndex = getPhaseIndex(currentPhase);
 
   return (
-    <div className={cn('w-full', className)}>
-      <div className="flex items-center justify-between">
+    <div className={cn('flex justify-center w-full', className)}>
+      <div className="inline-flex items-center gap-4">
         {phases.map((phase, index) => {
           const isCompleted = index < currentIndex;
           const isCurrent = index === currentIndex;
