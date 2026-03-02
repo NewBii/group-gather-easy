@@ -126,19 +126,25 @@ export const ConsensusScore = ({ eventId, scenarios, totalParticipants }: Consen
       if (votingProgress < 0.5) {
         setRecommendation({
           canFinalize: false,
-          message: 'Waiting for more participants to vote before making a recommendation.',
+          message: language === 'fr' 
+            ? 'En attente de plus de votes avant de faire une recommandation.'
+            : 'Waiting for more participants to vote before making a recommendation.',
           actionSuggested: 'wait_for_votes'
         });
       } else if (leader.dealbreakers > 0) {
         setRecommendation({
           canFinalize: false,
-          message: `${leader.label} is leading but has ${leader.dealbreakers} veto(s). Consider discussing with the group or looking at alternatives.`,
+          message: language === 'fr'
+            ? `${leader.label} est en tête mais a ${leader.dealbreakers} veto(s). Discutez avec le groupe ou considérez les alternatives.`
+            : `${leader.label} is leading but has ${leader.dealbreakers} veto(s). Consider discussing with the group or looking at alternatives.`,
           actionSuggested: 'discuss_dealbreakers'
         });
       } else if (leader.consensusPercent >= 60) {
         setRecommendation({
           canFinalize: true,
-          message: `${leader.label} has strong consensus (${leader.consensusPercent}%) with no vetoes. Ready to finalize!`,
+          message: language === 'fr'
+            ? `${leader.label} a un fort consensus (${leader.consensusPercent}%) sans veto. Prêt à finaliser !`
+            : `${leader.label} has strong consensus (${leader.consensusPercent}%) with no vetoes. Ready to finalize!`,
           actionSuggested: 'finalize'
         });
       } else {
@@ -146,13 +152,17 @@ export const ConsensusScore = ({ eventId, scenarios, totalParticipants }: Consen
         if (alternative) {
           setRecommendation({
             canFinalize: false,
-            message: `Close race! ${alternative.label} has no vetoes and might be a safer choice.`,
+            message: language === 'fr'
+              ? `Course serrée ! ${alternative.label} n'a aucun veto et pourrait être un choix plus sûr.`
+              : `Close race! ${alternative.label} has no vetoes and might be a safer choice.`,
             actionSuggested: 'consider_alternative'
           });
         } else {
           setRecommendation({
             canFinalize: false,
-            message: 'No clear winner yet. The group may need more discussion.',
+            message: language === 'fr'
+              ? 'Pas de gagnant clair. Le groupe a peut-être besoin de plus de discussion.'
+              : 'No clear winner yet. The group may need more discussion.',
             actionSuggested: 'wait_for_votes'
           });
         }

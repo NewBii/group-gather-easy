@@ -115,7 +115,7 @@ const EventWelcomeGate = ({ eventTitle, onJoin }: { eventTitle: string; onJoin: 
 
 const Event = () => {
   const { id } = useParams<{ id: string }>();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
 
   const [scenarios, setScenarios] = useState<AIScenario[]>([]);
@@ -214,6 +214,7 @@ const Event = () => {
           sparkPrompt: eventData.spark_prompt,
           eventId: event.id,
           contextAnalysis,
+          language,
           existingSparks: sparks.map((s: any) => ({
             id: s.id,
             text: s.spark_text,

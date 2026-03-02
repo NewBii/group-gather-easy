@@ -257,6 +257,7 @@ export const SparkPhase = ({ onEventCreated, userId, onBack }: SparkPhaseProps) 
           sparkPrompt: sparkPrompt.trim(),
           eventId: event.id,
           contextAnalysis: { ...contextAnalysis, structuredContext },
+          language,
         },
       });
 
