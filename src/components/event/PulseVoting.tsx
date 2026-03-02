@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Save, Check, Send, ChevronDown, ExternalLink } from 'lucide-react';
+import { Loader2, Save, Check, Send, ChevronDown, ExternalLink, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScenarioCard } from './ScenarioCard';
 import { ConsensusScore } from './ConsensusScore';
@@ -307,14 +308,10 @@ export const PulseVoting = ({
     if (collapsible) {
       return (
         <div className="space-y-3">
-          {/* Étape 2 divider */}
-          <div className="flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-              {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
-            </span>
-            <Separator className="flex-1" />
-          </div>
+          {/* Étape 2 label */}
+          <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase text-center">
+            {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
+          </p>
           <Collapsible open={availabilityOpen} onOpenChange={setAvailabilityOpen}>
             <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
               <span className="text-sm font-medium text-foreground">
@@ -369,14 +366,10 @@ export const PulseVoting = ({
     if (collapsible) {
       return (
         <div className="space-y-3">
-          {/* Étape 3 divider */}
-          <div className="flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-              {language === 'fr' ? 'Étape 3 · Vos idées' : 'Step 3 · Your ideas'}
-            </span>
-            <Separator className="flex-1" />
-          </div>
+          {/* Étape 3 label */}
+          <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase text-center">
+            {language === 'fr' ? 'Étape 3 · Vos idées' : 'Step 3 · Your ideas'}
+          </p>
           <Collapsible open={wishesOpen} onOpenChange={setWishesOpen}>
             <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
               <span className="text-sm font-medium text-foreground">
@@ -400,14 +393,10 @@ export const PulseVoting = ({
   // ══════════════════════════════════════════════
   const VotingHeader = () => (
     <div className="space-y-4">
-      {/* Étape 1 divider */}
-      <div className="flex items-center gap-3">
-        <Separator className="flex-1" />
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-          {language === 'fr' ? 'Étape 1 · Classez les options' : 'Step 1 · Rank the options'}
-        </span>
-        <Separator className="flex-1" />
-      </div>
+      {/* Étape 1 label */}
+      <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase text-center">
+        {language === 'fr' ? 'Étape 1 · Classez les options' : 'Step 1 · Rank the options'}
+      </p>
 
       {/* Short instruction banner */}
       {canVote && (
@@ -494,13 +483,9 @@ export const PulseVoting = ({
 
         {/* Étape 2 · Disponibilités — directly in flow */}
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-              {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
-            </span>
-            <Separator className="flex-1" />
-          </div>
+          <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase text-center">
+            {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
+          </p>
           {isDateFlexible ? (
             <AvailabilityPanel eventId={eventId} participantId={participantId} disabled={!canVote} />
           ) : (
@@ -508,6 +493,31 @@ export const PulseVoting = ({
               {language === 'fr' ? 'La date est fixée, pas de disponibilités à renseigner.' : 'The date is set, no availability needed.'}
             </p>
           )}
+        </div>
+
+        {/* Share CTA */}
+        <div className="space-y-2">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="default" size="lg" className="w-full">
+                <Share2 className="mr-2 h-5 w-5" />
+                {language === 'fr' ? 'Inviter mes amis à voter →' : 'Invite friends to vote →'}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>{language === 'fr' ? 'Partager l\'événement' : 'Share event'}</DialogTitle>
+              </DialogHeader>
+              <SharePanel
+                eventId={eventId}
+                eventSlug={eventSlug || ''}
+                eventTitle={eventTitle}
+              />
+            </DialogContent>
+          </Dialog>
+          <p className="text-xs text-muted-foreground text-center">
+            {language === 'fr' ? 'Le lien permet à vos amis de voter sans créer de compte.' : 'The link lets your friends vote without creating an account.'}
+          </p>
         </div>
 
         {/* Organizer tools tabs */}
@@ -530,7 +540,7 @@ export const PulseVoting = ({
               isRegenerating={isRegenerating}
               currentParticipantId={participantId}
             />
-            <Button variant="default" size="lg" onClick={onFinalize} className="w-full">
+            <Button variant="default" size="lg" onClick={onFinalize} disabled={totalParticipants === 0} className="w-full">
               {t.aiConcierge?.pulse?.finalize || (language === 'fr' ? 'Finaliser l\'événement' : 'Finalize Event')}
             </Button>
           </TabsContent>
