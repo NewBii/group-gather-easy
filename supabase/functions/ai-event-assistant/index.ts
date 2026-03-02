@@ -85,7 +85,7 @@ serve(async (req) => {
 
     // Parse body first to determine action
     const body = await req.json();
-    const { action, sparkPrompt, eventId, participantPreferences } = body;
+    const { action, sparkPrompt, eventId, participantPreferences, language: userLanguage } = body;
 
     const validActions = ['generate-draft', 'generate-scenarios', 'synthesize-winner', 'analyze-context', 'regenerate-scenarios', 'clarify-context'];
     if (!validActions.includes(action)) {
@@ -251,7 +251,7 @@ Rules:
 - Return at most 3 questions. Fewer is better.
 - For each question, suggest answer chips that make it easy to respond.
 - Write questions in a warm, conversational tone.
-- Detect the language of the prompt and respond in the same language.
+- Detect the language of the prompt and respond in the same language.${userLanguage ? `\n- The user's interface language is ${userLanguage === 'fr' ? 'French' : 'English'}. Prefer responding in that language.` : ''}
 
 Today's date is ${new Date().toISOString().split('T')[0]}.`
         },
@@ -628,6 +628,8 @@ Each scenario should be complete and actionable - not vague options.
 Make them genuinely different in location, vibe, or style.
 Today's date is ${new Date().toISOString().split('T')[0]}. Suggest dates in the near future.
 
+LANGUAGE: You MUST write ALL titles, descriptions, and labels in ${userLanguage === 'fr' ? 'French' : 'English'}. This is critical for consistency.
+
 ${scenarioGuidelines}${dateRangeInfo}`
         },
         {
@@ -794,7 +796,9 @@ Focus on THE 'SWEET SPOT' OF DETAIL:
 ${sparkInstructions}
 
 IMPORTANT: For each spark you address in a scenario, include its ID in the integrated_sparks array for that scenario.
-Today's date is ${new Date().toISOString().split('T')[0]}. Suggest dates in the near future.`
+Today's date is ${new Date().toISOString().split('T')[0]}. Suggest dates in the near future.
+
+LANGUAGE: You MUST write ALL titles, descriptions, and labels in ${userLanguage === 'fr' ? 'French' : 'English'}. This is critical for consistency.`
         },
         {
           role: 'user',
