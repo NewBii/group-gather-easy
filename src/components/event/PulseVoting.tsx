@@ -522,8 +522,9 @@ export const PulseVoting = ({
 
         {/* Organizer tools tabs */}
         <Tabs defaultValue="results" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="results">📊 {language === 'fr' ? 'Résultats' : 'Results'}</TabsTrigger>
+            <TabsTrigger value="availability">📅 {language === 'fr' ? 'Disponibilités' : 'Availability'}</TabsTrigger>
             <TabsTrigger value="share">🔗 {language === 'fr' ? 'Partager' : 'Share'}</TabsTrigger>
           </TabsList>
 
@@ -543,6 +544,15 @@ export const PulseVoting = ({
             <Button variant="default" size="lg" onClick={onFinalize} disabled={totalParticipants === 0} className="w-full">
               {t.aiConcierge?.pulse?.finalize || (language === 'fr' ? 'Finaliser l\'événement' : 'Finalize Event')}
             </Button>
+            {totalParticipants === 0 && (
+              <p className="text-xs text-muted-foreground text-center">
+                {language === 'fr' ? 'En attente des votes du groupe...' : 'Waiting for group votes...'}
+              </p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="availability" className="space-y-6 mt-6">
+            <AvailabilityPanel eventId={eventId} participantId={participantId} disabled={!canVote} />
           </TabsContent>
 
           <TabsContent value="share" className="space-y-6 mt-6">
