@@ -88,6 +88,13 @@ const vibeEmojis: Record<string, string> = {
   formal: '👔',
 };
 
+// Color accent for each option letter
+const optionAccentColors: Record<string, string> = {
+  'Option A': 'border-l-blue-500',
+  'Option B': 'border-l-amber-500',
+  'Option C': 'border-l-emerald-500',
+};
+
 export const ScenarioCard = ({
   scenario,
   rank,
@@ -109,6 +116,8 @@ export const ScenarioCard = ({
   const rankLabels = language === 'fr'
     ? ['1er', '2ème', '3ème']
     : ['1st', '2nd', '3rd'];
+
+  const accentClass = optionAccentColors[scenario.scenario_label] || 'border-l-primary';
 
   // Build compact info chips
   const infoChips: string[] = [];
@@ -132,34 +141,37 @@ export const ScenarioCard = ({
   return (
     <Card
       className={cn(
-        'relative transition-all duration-200',
-        isDealbreaker && 'opacity-50 border-destructive bg-destructive/5',
-        rank === 1 && !isDealbreaker && 'ring-2 ring-primary border-primary',
-        rank === 2 && !isDealbreaker && 'ring-1 ring-primary/50',
+        'relative transition-all duration-200 border-l-4 h-full flex flex-col',
+        accentClass,
+        isDealbreaker && 'opacity-50 border-l-destructive bg-destructive/5',
+        rank === 1 && !isDealbreaker && 'ring-2 ring-primary shadow-md',
+        rank === 2 && !isDealbreaker && 'ring-1 ring-primary/40',
       )}
     >
       {/* Rank badge */}
       {rank && !isDealbreaker && (
-        <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shadow-md">
+        <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shadow-md z-10">
           {rank}
         </div>
       )}
 
       {/* Dealbreaker overlay */}
       {isDealbreaker && (
-        <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-md">
+        <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-md z-10">
           <Ban className="w-4 h-4" />
         </div>
       )}
 
-      <CardHeader className="pb-2">
-        <Badge variant="outline" className="mb-1.5 w-fit">
-          {scenario.scenario_label}
-        </Badge>
-        <CardTitle className="text-lg leading-snug">{scenario.title}</CardTitle>
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-xs shrink-0">
+            {scenario.scenario_label}
+          </Badge>
+          <CardTitle className="text-base leading-snug">{scenario.title}</CardTitle>
+        </div>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      <CardContent className="p-4 pt-0 space-y-3 flex-1 flex flex-col">
         {/* One-line description */}
         {scenario.description && (
           <p className="text-sm text-muted-foreground line-clamp-2">{scenario.description}</p>
@@ -174,9 +186,12 @@ export const ScenarioCard = ({
           </div>
         )}
 
+        {/* Spacer to push vote buttons to bottom */}
+        <div className="flex-1" />
+
         {/* Vote buttons */}
         {showRanking && isVotingEnabled && (
-        <div className="space-y-2 pt-3 border-t">
+          <div className="space-y-2 pt-3 border-t">
             <p className="text-xs text-muted-foreground">
               {language === 'fr' ? 'Votre classement' : 'Your ranking'}
             </p>
@@ -190,7 +205,7 @@ export const ScenarioCard = ({
                   className={cn(
                     'min-h-[44px] rounded-lg border-2 text-sm font-semibold transition-all',
                     rank === r
-                      ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90'
+                      ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90 shadow-sm'
                       : 'border-border bg-background hover:bg-muted'
                   )}
                 >
@@ -239,12 +254,7 @@ export const ScenarioCard = ({
             </p>
             <div className="flex gap-2">
               {bookingUrl && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  asChild
-                >
+                <Button variant="outline" size="sm" className="flex-1" asChild>
                   <a href={bookingUrl} target="_blank" rel="noopener noreferrer">
                     Booking.com
                     <ExternalLink className="ml-1.5 h-3 w-3" />
@@ -252,12 +262,7 @@ export const ScenarioCard = ({
                 </Button>
               )}
               {airbnbUrl && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  asChild
-                >
+                <Button variant="outline" size="sm" className="flex-1" asChild>
                   <a href={airbnbUrl} target="_blank" rel="noopener noreferrer">
                     Airbnb
                     <ExternalLink className="ml-1.5 h-3 w-3" />

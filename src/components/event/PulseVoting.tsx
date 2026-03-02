@@ -84,150 +84,6 @@ interface VoteState {
   };
 }
 
-// ── Voting UI (shared by both organizer Tab 1 and participant view) ──
-const VotingSection = ({
-  scenarios,
-  votes,
-  canVote,
-  isMobile,
-  isOrganizer,
-  rankedCount,
-  totalScenarios,
-  allRanked,
-  language,
-  constraints,
-  contextAnalysis,
-  handleRankChange,
-  handleDealbreakerToggle,
-  t,
-}: {
-  scenarios: Scenario[];
-  votes: VoteState;
-  canVote: boolean;
-  isMobile: boolean;
-  isOrganizer?: boolean;
-  rankedCount: number;
-  totalScenarios: number;
-  allRanked: boolean;
-  language: string;
-  constraints?: ContextAnalysis['constraints'];
-  contextAnalysis?: ContextAnalysis | null;
-  handleRankChange: (id: string, rank: number | null) => void;
-  handleDealbreakerToggle: (id: string) => void;
-  t: any;
-}) => (
-  <div className="space-y-6">
-    {/* Constraint badges */}
-    {constraints && (
-      <div className="flex flex-wrap gap-2 justify-center">
-        {constraints.date && (
-          <ConstraintBadge
-            type={constraints.date.type}
-            category="date"
-            displayLabel={constraints.date.displayLabel || (constraints.date.type === 'fixed' ? 'Date locked' : constraints.date.type === 'flexible' ? 'Vote on date' : 'Date TBD')}
-          />
-        )}
-        {constraints.location && (
-          <ConstraintBadge
-            type={constraints.location.type}
-            category="location"
-            displayLabel={constraints.location.displayLabel || (constraints.location.type === 'fixed' ? 'Location set' : constraints.location.type === 'flexible' ? 'Vote on location' : 'Location TBD')}
-          />
-        )}
-        {constraints.time && constraints.time.type !== 'missing' && (
-          <ConstraintBadge
-            type={constraints.time.type}
-            category="time"
-            displayLabel={constraints.time.displayLabel || (constraints.time.type === 'fixed' ? 'Time locked' : 'Vote on time')}
-          />
-        )}
-      </div>
-    )}
-
-    {/* Instruction banner */}
-    {canVote && (
-      <div className="bg-muted/50 rounded-lg p-3 text-center">
-        <p className="text-lg font-medium text-foreground">
-          {language === 'fr'
-            ? 'Classez les options de 1 à 3 et signalez les impossibilités'
-            : 'Rank the options from 1 to 3 and flag any dealbreakers'}
-        </p>
-      </div>
-    )}
-
-    {/* Progress indicator */}
-    {canVote && (
-      <div className="flex items-center justify-center gap-3">
-        <div className="flex items-center gap-1.5">
-          {Array.from({ length: totalScenarios }).map((_, i) => (
-            <div
-              key={i}
-              className={cn(
-                'w-2.5 h-2.5 rounded-full transition-colors',
-                i < rankedCount
-                  ? (allRanked ? 'bg-green-500' : 'bg-primary')
-                  : 'bg-border'
-              )}
-            />
-          ))}
-        </div>
-        <p className={cn(
-          'text-sm',
-          allRanked ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'
-        )}>
-          {allRanked
-            ? (language === 'fr'
-              ? '✓ Classement complet — faites défiler pour vos disponibilités'
-              : '✓ Ranking complete — scroll down for availability')
-            : (language === 'fr'
-              ? `Vous avez classé ${rankedCount}/${totalScenarios} options`
-              : `You ranked ${rankedCount}/${totalScenarios} options`)}
-        </p>
-      </div>
-    )}
-
-    {/* Scenario cards */}
-    {isMobile ? (
-      <Carousel className="w-full" opts={{ align: 'start', loop: false }}>
-        <CarouselContent className="-ml-2">
-          {scenarios.map((scenario) => (
-            <CarouselItem key={scenario.id} className="pl-2 basis-[90%]">
-              <ScenarioCard
-                scenario={scenario}
-                rank={votes[scenario.id]?.rank ?? undefined}
-                isDealbreaker={votes[scenario.id]?.isDealbreaker}
-                onRankChange={(rank) => handleRankChange(scenario.id, rank)}
-                onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
-                isVotingEnabled={canVote}
-                showRanking={canVote}
-              />
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-        <div className="flex justify-center gap-2 mt-4">
-          <CarouselPrevious className="static translate-y-0" />
-          <CarouselNext className="static translate-y-0" />
-        </div>
-      </Carousel>
-    ) : (
-      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {scenarios.map((scenario) => (
-          <ScenarioCard
-            key={scenario.id}
-            scenario={scenario}
-            rank={votes[scenario.id]?.rank ?? undefined}
-            isDealbreaker={votes[scenario.id]?.isDealbreaker}
-            onRankChange={(rank) => handleRankChange(scenario.id, rank)}
-            onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
-            isVotingEnabled={canVote}
-            showRanking={canVote}
-          />
-        ))}
-      </div>
-    )}
-  </div>
-);
-
 export const PulseVoting = ({
   eventId,
   eventSlug,
@@ -400,20 +256,51 @@ export const PulseVoting = ({
     }
   };
 
-  // ── Save button (shared) ──
-  const SaveButton = () => canVote ? (
-    <Button onClick={handleSave} disabled={!hasChanges || isSaving} className="w-full" size="lg">
-      {isSaving ? (
-        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t.eventPage?.dateVoting?.saving || 'Saving...'}</>
-      ) : hasChanges ? (
-        <><Save className="mr-2 h-4 w-4" />{t.eventPage?.dateVoting?.confirmAvailability || 'Save my votes'}</>
+  // ── Scenario cards grid ──
+  const ScenarioCards = () => (
+    <>
+      {isMobile ? (
+        <Carousel className="w-full" opts={{ align: 'start', loop: false }}>
+          <CarouselContent className="-ml-2">
+            {scenarios.map((scenario) => (
+              <CarouselItem key={scenario.id} className="pl-2 basis-[90%]">
+                <ScenarioCard
+                  scenario={scenario}
+                  rank={votes[scenario.id]?.rank ?? undefined}
+                  isDealbreaker={votes[scenario.id]?.isDealbreaker}
+                  onRankChange={(rank) => handleRankChange(scenario.id, rank)}
+                  onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
+                  isVotingEnabled={canVote}
+                  showRanking={canVote}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <div className="flex justify-center gap-2 mt-4">
+            <CarouselPrevious className="static translate-y-0" />
+            <CarouselNext className="static translate-y-0" />
+          </div>
+        </Carousel>
       ) : (
-        <><Check className="mr-2 h-4 w-4" />{t.eventPage?.dateVoting?.saved || 'Saved'}</>
+        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {scenarios.map((scenario) => (
+            <ScenarioCard
+              key={scenario.id}
+              scenario={scenario}
+              rank={votes[scenario.id]?.rank ?? undefined}
+              isDealbreaker={votes[scenario.id]?.isDealbreaker}
+              onRankChange={(rank) => handleRankChange(scenario.id, rank)}
+              onDealbreakerToggle={() => handleDealbreakerToggle(scenario.id)}
+              isVotingEnabled={canVote}
+              showRanking={canVote}
+            />
+          ))}
+        </div>
       )}
-    </Button>
-  ) : null;
+    </>
+  );
 
-  // ── Availability section (shared) ──
+  // ── Availability section ──
   const AvailabilitySection = ({ collapsible }: { collapsible: boolean }) => {
     if (!isDateFlexible) return null;
 
@@ -433,21 +320,10 @@ export const PulseVoting = ({
       );
     }
 
-    return (
-      <>
-        <div className="relative flex items-center gap-4 py-2">
-          <Separator className="flex-1" />
-          <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-            {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
-          </span>
-          <Separator className="flex-1" />
-        </div>
-        <AvailabilityPanel eventId={eventId} participantId={participantId} disabled={!canVote} />
-      </>
-    );
+    return <AvailabilityPanel eventId={eventId} participantId={participantId} disabled={!canVote} />;
   };
 
-  // ── Wishes section (shared) ──
+  // ── Wishes section ──
   const WishesSection = ({ collapsible }: { collapsible: boolean }) => {
     if (!canVote) return null;
 
@@ -496,43 +372,97 @@ export const PulseVoting = ({
       );
     }
 
-    return (
-      <>
-        <div className="relative flex items-center gap-4 py-2">
-          <Separator className="flex-1" />
-          <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-            {language === 'fr' ? 'Une idée à ajouter ?' : 'Have an idea to add?'}
-          </span>
-          <Separator className="flex-1" />
-        </div>
-        {content}
-      </>
-    );
-  };
-
-  const votingSectionProps = {
-    scenarios, votes, canVote, isMobile, isOrganizer, rankedCount, totalScenarios,
-    allRanked, language, constraints, contextAnalysis, handleRankChange, handleDealbreakerToggle, t,
+    return content;
   };
 
   // ══════════════════════════════════════════════
-  //  ORGANIZER VIEW — Tabbed interface
+  //  SHARED: Instruction banner + constraint badges + progress
+  // ══════════════════════════════════════════════
+  const VotingHeader = () => (
+    <div className="space-y-4">
+      {/* Single instruction banner — the only heading */}
+      {canVote && (
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-center">
+          <p className="text-base font-semibold text-foreground">
+            {language === 'fr'
+              ? 'Classez les options de 1 à 3 et signalez les impossibilités'
+              : 'Rank the options from 1 to 3 and flag any dealbreakers'}
+          </p>
+        </div>
+      )}
+
+      {/* Constraint badges — subtle, inline */}
+      {constraints && (
+        <div className="flex flex-wrap gap-2 justify-center">
+          {constraints.date && (
+            <ConstraintBadge
+              type={constraints.date.type}
+              category="date"
+              displayLabel={constraints.date.displayLabel || (constraints.date.type === 'fixed' ? 'Date locked' : constraints.date.type === 'flexible' ? 'Vote on date' : 'Date TBD')}
+            />
+          )}
+          {constraints.location && (
+            <ConstraintBadge
+              type={constraints.location.type}
+              category="location"
+              displayLabel={constraints.location.displayLabel || (constraints.location.type === 'fixed' ? 'Location set' : constraints.location.type === 'flexible' ? 'Vote on location' : 'Location TBD')}
+            />
+          )}
+          {constraints.time && constraints.time.type !== 'missing' && (
+            <ConstraintBadge
+              type={constraints.time.type}
+              category="time"
+              displayLabel={constraints.time.displayLabel || (constraints.time.type === 'fixed' ? 'Time locked' : 'Vote on time')
+              }
+            />
+          )}
+        </div>
+      )}
+
+      {/* Progress indicator */}
+      {canVote && (
+        <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center gap-1.5">
+            {Array.from({ length: totalScenarios }).map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  'w-2.5 h-2.5 rounded-full transition-colors',
+                  i < rankedCount
+                    ? (allRanked ? 'bg-green-500' : 'bg-primary')
+                    : 'bg-border'
+                )}
+              />
+            ))}
+          </div>
+          <p className={cn(
+            'text-sm',
+            allRanked ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'
+          )}>
+            {allRanked
+              ? (language === 'fr'
+                ? '✓ Classement complet'
+                : '✓ Ranking complete')
+              : (language === 'fr'
+                ? `${rankedCount}/${totalScenarios} classées`
+                : `${rankedCount}/${totalScenarios} ranked`)}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
+  // ══════════════════════════════════════════════
+  //  ORGANIZER VIEW
   // ══════════════════════════════════════════════
   if (isOrganizer) {
     return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h2 className="text-2xl font-bold text-foreground">
-            {contextAnalysis?.isVague
-              ? (t.aiConcierge?.pulse?.starterTitle || 'Which Direction Feels Right?')
-              : (t.aiConcierge?.pulse?.title || 'Choose Your Preference')}
-          </h2>
-        </div>
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* Instruction + badges + progress */}
+        <VotingHeader />
 
-        {/* Voting cards + save — always visible */}
-        <VotingSection {...votingSectionProps} />
-        <SaveButton />
+        {/* Scenario cards — full width */}
+        <ScenarioCards />
 
         {/* Tabs below cards */}
         <Tabs defaultValue="results" className="w-full">
@@ -588,7 +518,34 @@ export const PulseVoting = ({
           </TabsContent>
         </Tabs>
 
-        <WishesSection collapsible={false} />
+        {/* Wishes — always visible for organizer */}
+        <div className="space-y-2">
+          <Separator />
+          <p className="text-sm font-medium text-muted-foreground">
+            ✨ {language === 'fr' ? 'Ajouter une idée' : 'Add an idea'}
+          </p>
+          <WishesSection collapsible={false} />
+        </div>
+
+        {/* Sticky save bar */}
+        {canVote && hasChanges && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t shadow-lg">
+            <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3">
+              <p className="text-sm text-muted-foreground">
+                {language === 'fr'
+                  ? `${rankedCount}/${totalScenarios} classées`
+                  : `${rankedCount}/${totalScenarios} ranked`}
+              </p>
+              <Button onClick={handleSave} disabled={isSaving} size="lg">
+                {isSaving ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t.eventPage?.dateVoting?.saving || 'Saving...'}</>
+                ) : (
+                  <><Save className="mr-2 h-4 w-4" />{language === 'fr' ? 'Enregistrer mes votes' : 'Save my votes'}</>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -597,20 +554,36 @@ export const PulseVoting = ({
   //  PARTICIPANT VIEW — Single column, collapsible
   // ══════════════════════════════════════════════
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-foreground">
-          {contextAnalysis?.isVague
-            ? (t.aiConcierge?.pulse?.starterTitle || 'Which Direction Feels Right?')
-            : (t.aiConcierge?.pulse?.title || 'Choose Your Preference')}
-        </h2>
-      </div>
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Instruction + badges + progress */}
+      <VotingHeader />
 
-      <VotingSection {...votingSectionProps} />
-      <SaveButton />
+      {/* Scenario cards — full width */}
+      <ScenarioCards />
+
+      {/* Collapsible sections */}
       <AvailabilitySection collapsible={true} />
       <WishesSection collapsible={true} />
+
+      {/* Sticky save bar */}
+      {canVote && hasChanges && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t shadow-lg">
+          <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3">
+            <p className="text-sm text-muted-foreground">
+              {language === 'fr'
+                ? `${rankedCount}/${totalScenarios} classées`
+                : `${rankedCount}/${totalScenarios} ranked`}
+            </p>
+            <Button onClick={handleSave} disabled={isSaving} size="lg">
+              {isSaving ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t.eventPage?.dateVoting?.saving || 'Saving...'}</>
+              ) : (
+                <><Save className="mr-2 h-4 w-4" />{language === 'fr' ? 'Enregistrer mes votes' : 'Save my votes'}</>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
