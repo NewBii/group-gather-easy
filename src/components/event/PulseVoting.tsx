@@ -380,6 +380,15 @@ export const PulseVoting = ({
   // ══════════════════════════════════════════════
   const VotingHeader = () => (
     <div className="space-y-4">
+      {/* Étape 1 divider */}
+      <div className="flex items-center gap-3">
+        <Separator className="flex-1" />
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+          {language === 'fr' ? 'Étape 1 · Classez les options' : 'Step 1 · Rank the options'}
+        </span>
+        <Separator className="flex-1" />
+      </div>
+
       {/* Single instruction banner — the only heading */}
       {canVote && (
         <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-center">
@@ -501,16 +510,6 @@ export const PulseVoting = ({
                 ? `${totalParticipants} participant${totalParticipants > 1 ? 's' : ''}`
                 : `${totalParticipants} participant${totalParticipants > 1 ? 's' : ''}`}
             </div>
-            {eventSlug && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => window.location.href = `/event/${eventSlug}`}
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                {language === 'fr' ? "Voir l'événement" : 'View Event Page'}
-              </Button>
-            )}
           </TabsContent>
 
           <TabsContent value="availability" className="space-y-6 mt-6">
