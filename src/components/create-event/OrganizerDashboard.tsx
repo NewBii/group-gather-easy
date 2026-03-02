@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
@@ -411,9 +411,21 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
           <span className="text-3xl">🎯</span>
         </div>
-        <h2 className="text-2xl font-bold text-foreground">
-          {eventTitle || (t.aiConcierge?.spark?.waitingRoom?.title || 'Your Event is Ready!')}
-        </h2>
+        <div className="flex items-center justify-center gap-2">
+          <h2 className="text-2xl font-bold text-foreground">
+            {eventTitle || (t.aiConcierge?.spark?.waitingRoom?.title || 'Your Event is Ready!')}
+          </h2>
+          {eventSlug && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => window.location.href = `/event/${eventSlug}`}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
         <p className="text-muted-foreground max-w-md mx-auto">
           {t.aiConcierge?.pulse?.subtitle || 'Review the scenarios, cast your vote, and share with your group'}
         </p>
