@@ -306,17 +306,27 @@ export const PulseVoting = ({
 
     if (collapsible) {
       return (
-        <Collapsible open={availabilityOpen} onOpenChange={setAvailabilityOpen}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-            <span className="text-sm font-medium text-foreground">
-              📅 {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
+        <div className="space-y-3">
+          {/* Étape 2 divider */}
+          <div className="flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+              {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
             </span>
-            <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', availabilityOpen && 'rotate-180')} />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-4">
-            <AvailabilityPanel eventId={eventId} participantId={participantId} disabled={!canVote} />
-          </CollapsibleContent>
-        </Collapsible>
+            <Separator className="flex-1" />
+          </div>
+          <Collapsible open={availabilityOpen} onOpenChange={setAvailabilityOpen}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+              <span className="text-sm font-medium text-foreground">
+                📅 {language === 'fr' ? 'Indiquez vos disponibilités' : 'Enter your availability'}
+              </span>
+              <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', availabilityOpen && 'rotate-180')} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              <AvailabilityPanel eventId={eventId} participantId={participantId} disabled={!canVote} />
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
       );
     }
 
@@ -358,17 +368,27 @@ export const PulseVoting = ({
 
     if (collapsible) {
       return (
-        <Collapsible open={wishesOpen} onOpenChange={setWishesOpen}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-            <span className="text-sm font-medium text-foreground">
-              ✨ {language === 'fr' ? 'Une idée à ajouter ?' : 'Have an idea to add?'}
+        <div className="space-y-3">
+          {/* Étape 3 divider */}
+          <div className="flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+              {language === 'fr' ? 'Étape 3 · Vos idées' : 'Step 3 · Your ideas'}
             </span>
-            <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', wishesOpen && 'rotate-180')} />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-4">
-            {content}
-          </CollapsibleContent>
-        </Collapsible>
+            <Separator className="flex-1" />
+          </div>
+          <Collapsible open={wishesOpen} onOpenChange={setWishesOpen}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+              <span className="text-sm font-medium text-foreground">
+                ✨ {language === 'fr' ? 'Partagez une idée ou contrainte' : 'Share an idea or constraint'}
+              </span>
+              <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', wishesOpen && 'rotate-180')} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              {content}
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
       );
     }
 
@@ -389,13 +409,13 @@ export const PulseVoting = ({
         <Separator className="flex-1" />
       </div>
 
-      {/* Single instruction banner — the only heading */}
+      {/* Short instruction banner */}
       {canVote && (
         <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-center">
           <p className="text-base font-semibold text-foreground">
             {language === 'fr'
-              ? 'Classez les options de 1 à 3 et signalez les impossibilités'
-              : 'Rank the options from 1 to 3 and flag any dealbreakers'}
+              ? 'Classez de 1 à 3 · Marquez les impossibilités'
+              : 'Rank 1 to 3 · Flag dealbreakers'}
           </p>
         </div>
       )}
@@ -517,14 +537,6 @@ export const PulseVoting = ({
           </TabsContent>
         </Tabs>
 
-        {/* Wishes — always visible for organizer */}
-        <div className="space-y-2">
-          <Separator />
-          <p className="text-sm font-medium text-muted-foreground">
-            ✨ {language === 'fr' ? 'Ajouter une idée' : 'Add an idea'}
-          </p>
-          <WishesSection collapsible={false} />
-        </div>
 
         {/* Sticky save bar */}
         {canVote && hasChanges && (
