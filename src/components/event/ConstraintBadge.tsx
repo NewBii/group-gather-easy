@@ -20,6 +20,28 @@ const categoryIcons = {
 export const ConstraintBadge = ({ type, category, displayLabel, className }: ConstraintBadgeProps) => {
   const icon = categoryIcons[category];
   const { language } = useLanguage();
+
+  // Always use translated labels, ignoring raw displayLabel from DB
+  const translatedLabels: Record<string, Record<string, Record<string, string>>> = {
+    date: {
+      fixed: { fr: 'Date fixée', en: 'Date locked' },
+      flexible: { fr: 'Vote en cours', en: 'Voting open' },
+      missing: { fr: 'Date à définir', en: 'Date TBD' },
+    },
+    location: {
+      fixed: { fr: 'Lieu fixé', en: 'Location set' },
+      flexible: { fr: 'Lieu en vote', en: 'Location TBD' },
+      missing: { fr: 'Lieu à définir', en: 'Location TBD' },
+    },
+    time: {
+      fixed: { fr: 'Horaire fixé', en: 'Time locked' },
+      flexible: { fr: 'Horaire flexible', en: 'Flexible time' },
+      missing: { fr: 'Horaire à définir', en: 'Time TBD' },
+    },
+  };
+
+  const lang = language === 'fr' ? 'fr' : 'en';
+  const label = translatedLabels[category]?.[type]?.[lang] || displayLabel;
   
   if (type === 'fixed') {
     return (
@@ -34,7 +56,7 @@ export const ConstraintBadge = ({ type, category, displayLabel, className }: Con
               )}
             >
               <Lock className="h-3 w-3" />
-              {icon} {displayLabel}
+              {icon} {label}
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
@@ -58,7 +80,7 @@ export const ConstraintBadge = ({ type, category, displayLabel, className }: Con
               )}
             >
               <Vote className="h-3 w-3" />
-              {icon} {displayLabel}
+              {icon} {label}
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
@@ -82,7 +104,7 @@ export const ConstraintBadge = ({ type, category, displayLabel, className }: Con
             )}
           >
             <HelpCircle className="h-3 w-3" />
-            {icon} {displayLabel}
+            {icon} {label}
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
