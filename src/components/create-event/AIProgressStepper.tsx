@@ -38,16 +38,16 @@ export const AIProgressStepper = ({ currentPhase, className }: AIProgressStepper
 
   return (
     <div className={cn('flex justify-center w-full', className)}>
-      <div className="inline-flex items-center gap-4">
+      <div className="flex items-start justify-center gap-0">
         {phases.map((phase, index) => {
           const isCompleted = index < currentIndex;
           const isCurrent = index === currentIndex;
           const isLast = index === phases.length - 1;
 
           return (
-            <div key={phase.id} className="flex flex-1 items-center">
+            <div key={phase.id} className="flex items-start">
               {/* Step circle and label */}
-              <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center w-28">
                 <div
                   className={cn(
                     'w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500',
@@ -77,7 +77,7 @@ export const AIProgressStepper = ({ currentPhase, className }: AIProgressStepper
 
               {/* Connector line */}
               {!isLast && (
-                <div className="flex-1 mx-3 sm:mx-6">
+                <div className="w-12 sm:w-16 mt-6">
                   <div
                     className={cn(
                       'h-1 rounded-full transition-all duration-500',
