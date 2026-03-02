@@ -10,26 +10,26 @@ interface AIProgressStepperProps {
 }
 
 export const AIProgressStepper = ({ currentPhase, className }: AIProgressStepperProps) => {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
 
   const phases = [
     {
       id: 'spark' as AIPhase,
       icon: Sparkles,
       label: t.aiConcierge?.spark?.title || 'Spark',
-      description: 'Idea created',
+      description: language === 'fr' ? 'Idée créée' : 'Idea created',
     },
     {
       id: 'pulse' as AIPhase,
       icon: Users,
       label: t.aiConcierge?.pulse?.title || 'Pulse',
-      description: 'Gathering votes',
+      description: language === 'fr' ? 'Votes en cours' : 'Gathering votes',
     },
     {
       id: 'lockdown' as AIPhase,
       icon: Lock,
       label: t.aiConcierge?.lockdown?.title || 'Lockdown',
-      description: 'Finalized',
+      description: language === 'fr' ? 'Finalisé' : 'Finalized',
     },
   ];
 

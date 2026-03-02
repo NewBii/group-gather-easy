@@ -427,22 +427,21 @@ export const PulseVoting = ({
             <ConstraintBadge
               type={constraints.date.type}
               category="date"
-              displayLabel={constraints.date.displayLabel || (constraints.date.type === 'fixed' ? 'Date locked' : constraints.date.type === 'flexible' ? 'Vote on date' : 'Date TBD')}
+              displayLabel={constraints.date.displayLabel || (constraints.date.type === 'fixed' ? (language === 'fr' ? 'Date fixée' : 'Date locked') : constraints.date.type === 'flexible' ? (language === 'fr' ? 'Vote sur la date' : 'Vote on date') : (language === 'fr' ? 'Date à définir' : 'Date TBD'))}
             />
           )}
           {constraints.location && (
             <ConstraintBadge
               type={constraints.location.type}
               category="location"
-              displayLabel={constraints.location.displayLabel || (constraints.location.type === 'fixed' ? 'Location set' : constraints.location.type === 'flexible' ? 'Vote on location' : 'Location TBD')}
+              displayLabel={constraints.location.displayLabel || (constraints.location.type === 'fixed' ? (language === 'fr' ? 'Lieu fixé' : 'Location set') : constraints.location.type === 'flexible' ? (language === 'fr' ? 'Vote sur le lieu' : 'Vote on location') : (language === 'fr' ? 'Lieu à définir' : 'Location TBD'))}
             />
           )}
           {constraints.time && constraints.time.type !== 'missing' && (
             <ConstraintBadge
               type={constraints.time.type}
               category="time"
-              displayLabel={constraints.time.displayLabel || (constraints.time.type === 'fixed' ? 'Time locked' : 'Vote on time')
-              }
+              displayLabel={constraints.time.displayLabel || (constraints.time.type === 'fixed' ? (language === 'fr' ? 'Horaire fixé' : 'Time locked') : (language === 'fr' ? 'Vote sur l\'horaire' : 'Vote on time'))}
             />
           )}
         </div>
@@ -533,7 +532,21 @@ export const PulseVoting = ({
           </TabsContent>
 
           <TabsContent value="availability" className="space-y-6 mt-6">
-            <AvailabilitySection collapsible={false} />
+            {/* Étape 2 divider */}
+            <div className="flex items-center gap-3">
+              <Separator className="flex-1" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
+              </span>
+              <Separator className="flex-1" />
+            </div>
+            {isDateFlexible ? (
+              <AvailabilityPanel eventId={eventId} participantId={participantId} disabled={!canVote} />
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                {language === 'fr' ? 'La date est fixée, pas de disponibilités à renseigner.' : 'The date is set, no availability needed.'}
+              </p>
+            )}
           </TabsContent>
         </Tabs>
 

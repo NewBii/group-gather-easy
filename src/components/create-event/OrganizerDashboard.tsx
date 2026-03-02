@@ -61,7 +61,7 @@ interface OrganizerDashboardProps {
 }
 
 export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: OrganizerDashboardProps) => {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { toast } = useToast();
   
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
@@ -290,14 +290,14 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
       if (error) throw error;
 
       toast({
-        title: t.aiConcierge?.pulse?.title || 'Scenarios regenerated',
-        description: 'New scenarios have been created based on group input.',
+        title: t.aiConcierge?.pulse?.title || (language === 'fr' ? 'Scénarios régénérés' : 'Scenarios regenerated'),
+        description: language === 'fr' ? 'De nouveaux scénarios ont été créés.' : 'New scenarios have been created based on group input.',
       });
     } catch (error) {
       console.error('Error regenerating scenarios:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to regenerate scenarios. Please try again.',
+        title: language === 'fr' ? 'Erreur' : 'Error',
+        description: language === 'fr' ? 'Impossible de régénérer les scénarios.' : 'Failed to regenerate scenarios. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -315,8 +315,8 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
 
       if (!votes || votes.length === 0) {
         toast({
-          title: 'No votes yet',
-          description: 'Wait for participants to vote before finalizing.',
+          title: language === 'fr' ? 'Aucun vote' : 'No votes yet',
+          description: language === 'fr' ? 'Attendez que les participants votent.' : 'Wait for participants to vote before finalizing.',
           variant: 'destructive',
         });
         return;
@@ -356,8 +356,8 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
 
       if (!winnerId) {
         toast({
-          title: 'No clear winner',
-          description: 'All scenarios have dealbreakers or no votes. Try regenerating.',
+          title: language === 'fr' ? 'Pas de gagnant clair' : 'No clear winner',
+          description: language === 'fr' ? 'Tous les scénarios ont des vétos ou aucun vote.' : 'All scenarios have dealbreakers or no votes. Try regenerating.',
           variant: 'destructive',
         });
         return;
@@ -387,8 +387,8 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
     } catch (error) {
       console.error('Error finalizing event:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to finalize the event. Please try again.',
+        title: language === 'fr' ? 'Erreur' : 'Error',
+        description: language === 'fr' ? 'Impossible de finaliser l\'événement.' : 'Failed to finalize the event. Please try again.',
         variant: 'destructive',
       });
     }
@@ -403,7 +403,7 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       <AIProgressStepper currentPhase={aiPhase} />
 
       {/* Header */}
@@ -427,7 +427,7 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
           )}
         </div>
         <p className="text-muted-foreground max-w-md mx-auto">
-          {t.aiConcierge?.pulse?.subtitle || 'Review the scenarios, cast your vote, and share with your group'}
+          {t.aiConcierge?.pulse?.subtitle}
         </p>
       </div>
 
@@ -449,8 +449,8 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
           />
         ) : scenarios.length === 0 ? (
           <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed">
-            <p className="text-muted-foreground">
-              Scenarios are being generated...
+          <p className="text-muted-foreground">
+              {language === 'fr' ? 'Les scénarios sont en cours de génération...' : 'Scenarios are being generated...'}
             </p>
             <Button
               variant="outline"
@@ -463,13 +463,13 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
               ) : (
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              Generate Scenarios
+              {language === 'fr' ? 'Générer les scénarios' : 'Generate Scenarios'}
             </Button>
           </div>
         ) : (
           <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed">
             <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-            <p className="text-muted-foreground">Setting up your organizer profile...</p>
+            <p className="text-muted-foreground">{language === 'fr' ? 'Préparation de votre profil organisateur...' : 'Setting up your organizer profile...'}</p>
           </div>
         )}
       </div>

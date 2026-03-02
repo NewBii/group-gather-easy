@@ -2,6 +2,7 @@ import { Lock, Vote, HelpCircle, Baby, Accessibility, Utensils, DollarSign, MapP
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface ConstraintBadgeProps {
   type: 'fixed' | 'flexible' | 'missing';
@@ -18,6 +19,7 @@ const categoryIcons = {
 
 export const ConstraintBadge = ({ type, category, displayLabel, className }: ConstraintBadgeProps) => {
   const icon = categoryIcons[category];
+  const { language } = useLanguage();
   
   if (type === 'fixed') {
     return (
@@ -36,7 +38,7 @@ export const ConstraintBadge = ({ type, category, displayLabel, className }: Con
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
-            <p>This is locked by the organizer</p>
+            <p>{language === 'fr' ? 'Fixé par l\'organisateur' : 'This is locked by the organizer'}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -60,7 +62,7 @@ export const ConstraintBadge = ({ type, category, displayLabel, className }: Con
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
-            <p>The group will vote on this</p>
+            <p>{language === 'fr' ? 'Le groupe votera' : 'The group will vote on this'}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -84,7 +86,7 @@ export const ConstraintBadge = ({ type, category, displayLabel, className }: Con
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
-          <p>To be decided</p>
+          <p>{language === 'fr' ? 'À décider' : 'To be decided'}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
