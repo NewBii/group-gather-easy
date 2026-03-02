@@ -556,11 +556,20 @@ export const PulseVoting = ({
           </TabsContent>
 
           <TabsContent value="share" className="space-y-6 mt-6">
-            <SharePanel
-              eventId={eventId}
-              eventSlug={eventSlug || ''}
-              eventTitle={eventTitle}
-            />
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="default" size="lg" className="w-full">
+                  <Share2 className="mr-2 h-5 w-5" />
+                  {language === 'fr' ? 'Inviter mes amis à voter →' : 'Invite friends to vote →'}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>{language === 'fr' ? 'Partager l\'événement' : 'Share event'}</DialogTitle>
+                </DialogHeader>
+                <SharePanel eventId={eventId} eventSlug={eventSlug || ''} eventTitle={eventTitle} />
+              </DialogContent>
+            </Dialog>
             <div className="text-center text-sm text-muted-foreground">
               {language === 'fr'
                 ? `${totalParticipants} participant${totalParticipants > 1 ? 's' : ''}`
