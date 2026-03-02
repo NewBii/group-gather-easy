@@ -452,15 +452,23 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
           </p>
         </div>
 
-        {/* ② Vote nudge */}
-        <div className="text-center space-y-1">
-          <p className="text-sm text-muted-foreground">
-            {language === 'fr'
-              ? 'Vous avez déjà voté ? Sinon, faites-le en premier — ça prend 30 secondes.'
-              : 'Already voted? If not, go first — it takes 30 seconds.'}
-          </p>
-          <Button variant="link" className="text-sm" onClick={handleLaunch}>
-            {language === 'fr' ? 'Voir les options →' : 'See the options →'}
+        {/* ② Vote nudge card */}
+        <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 space-y-1">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">🗳️</span>
+            <div className="flex-1 space-y-1">
+              <p className="text-sm font-semibold text-primary">
+                {language === 'fr' ? 'Et vous, avez-vous voté ?' : 'Have you voted yet?'}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {language === 'fr'
+                  ? 'Les participants suivent votre exemple — votez en premier pour montrer la voie.'
+                  : 'Participants follow your lead — vote first to set the tone.'}
+              </p>
+            </div>
+          </div>
+          <Button variant="default" size="sm" className="w-full mt-3" onClick={handleLaunch}>
+            {language === 'fr' ? 'Voter maintenant →' : 'Vote now →'}
           </Button>
         </div>
 
