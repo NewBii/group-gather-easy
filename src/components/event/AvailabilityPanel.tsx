@@ -254,7 +254,7 @@ export const AvailabilityPanel = ({
                       {formatDate(dateOption.suggested_date)}
                     </span>
                     {dateOption.is_long_weekend && (
-                      <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
+                      <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border rounded-full px-2 py-0.5">
                         <Sun className="h-3 w-3 mr-1" />
                         {language === 'fr' ? 'Week-end prolongé' : 'Long weekend'}
                       </Badge>
