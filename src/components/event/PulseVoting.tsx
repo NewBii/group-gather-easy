@@ -485,7 +485,7 @@ export const PulseVoting = ({
   // ══════════════════════════════════════════════
   if (isOrganizer) {
     return (
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="space-y-6">
         {/* Instruction + badges + progress */}
         <VotingHeader />
 
