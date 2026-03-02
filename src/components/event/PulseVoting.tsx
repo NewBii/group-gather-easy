@@ -492,12 +492,29 @@ export const PulseVoting = ({
         {/* Scenario cards — full width */}
         <ScenarioCards />
 
-        {/* Tabs below cards */}
+        {/* Étape 2 · Disponibilités — directly in flow */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+              {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
+            </span>
+            <Separator className="flex-1" />
+          </div>
+          {isDateFlexible ? (
+            <AvailabilityPanel eventId={eventId} participantId={participantId} disabled={!canVote} />
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              {language === 'fr' ? 'La date est fixée, pas de disponibilités à renseigner.' : 'The date is set, no availability needed.'}
+            </p>
+          )}
+        </div>
+
+        {/* Organizer tools tabs */}
         <Tabs defaultValue="results" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="results">📊 {language === 'fr' ? 'Résultats' : 'Results'}</TabsTrigger>
             <TabsTrigger value="share">🔗 {language === 'fr' ? 'Partager' : 'Share'}</TabsTrigger>
-            <TabsTrigger value="availability">📅 {language === 'fr' ? 'Disponibilités' : 'Availability'}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="results" className="space-y-6 mt-6">
@@ -514,7 +531,7 @@ export const PulseVoting = ({
               currentParticipantId={participantId}
             />
             <Button variant="default" size="lg" onClick={onFinalize} className="w-full">
-              {t.aiConcierge?.pulse?.finalize || 'Finalize Event'}
+              {t.aiConcierge?.pulse?.finalize || (language === 'fr' ? 'Finaliser l\'événement' : 'Finalize Event')}
             </Button>
           </TabsContent>
 
@@ -530,26 +547,7 @@ export const PulseVoting = ({
                 : `${totalParticipants} participant${totalParticipants > 1 ? 's' : ''}`}
             </div>
           </TabsContent>
-
-          <TabsContent value="availability" className="space-y-6 mt-6">
-            {/* Étape 2 divider */}
-            <div className="flex items-center gap-3">
-              <Separator className="flex-1" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                {language === 'fr' ? 'Étape 2 · Vos disponibilités' : 'Step 2 · Your availability'}
-              </span>
-              <Separator className="flex-1" />
-            </div>
-            {isDateFlexible ? (
-              <AvailabilityPanel eventId={eventId} participantId={participantId} disabled={!canVote} />
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                {language === 'fr' ? 'La date est fixée, pas de disponibilités à renseigner.' : 'The date is set, no availability needed.'}
-              </p>
-            )}
-          </TabsContent>
         </Tabs>
-
 
         {/* Sticky save bar */}
         {canVote && hasChanges && (
