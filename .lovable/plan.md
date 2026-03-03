@@ -1,25 +1,33 @@
 
 
-## Issues Identified
+## Problem
 
-### 1. Tracker (AIProgressStepper) not centered with content
-The `OrganizerDashboard` wraps everything in `<div className="space-y-6">` with no max-width, but `PulseVoting` inside it uses `max-w-5xl mx-auto`. The stepper and header sit outside PulseVoting, so they stretch full width while the cards are constrained. Fix: add `max-w-5xl mx-auto` to the OrganizerDashboard wrapper.
+When an anonymous participant joins an event created by an authenticated user, they cannot save votes (availability, scenario votes, etc.). The error is "Error saving vote."
 
-### 2. Missing "Étape 2" in organizer view
-The `AvailabilitySection` only renders when `isDateFlexible` is true (line 305). Even when it does render, in the organizer view it's buried inside the "Disponibilités" tab with `collapsible={false}`, which just renders a raw `AvailabilityPanel` with no step divider. The tab label says "📅 Disponibilités" but there's no "Étape 2" separator. Fix: add the step divider inside the organizer "Disponibilités" tab content, and also show the tab even when date is not flexible (with a message like "No flexible dates").
+**Root cause**: The `owns_participant` database function controls write access for votes. For anonymous participants (`user_id IS NULL`), it only returns `TRUE` if the event was also created anonymously (`created_by IS NULL`). When the event was created by an authenticated user, anonymous participants are blocked by RLS.
 
-### 3. Mixed English and French on same page
-Multiple hardcoded English strings throughout:
-- **AIProgressStepper.tsx** (line 21-33): descriptions "Idea created", "Gathering votes", "Finalized"
-- **ConstraintBadge.tsx** (lines 38-39, 62-63, 87-88): tooltips "This is locked by the organizer", "The group will vote on this", "To be decided"  
-- **ConstraintBadge.tsx**: fallback displayLabels in PulseVoting lines 430-445: "Date locked", "Vote on date", "Location set", "Location TBD", etc.
-- **OrganizerDashboard.tsx** (lines 293-295, 452-453, 466, 472): "Scenarios are being generated...", "Generate Scenarios", "Setting up your organizer profile...", error toasts
-- **PulseVoting.tsx**: subtitle fallback "Review the scenarios..." (line 430 in OrganizerDashboard)
-- **ConsensusScore** title "Baromètre de décision" appears French but subtitle "0/1 ont voté" — need to check
+Relevant code in `owns_participant`:
+```sql
+IF v_user_id IS NULL THEN
+    SELECT created_by INTO v_event_created_by FROM events WHERE id = v_event_id;
+    IF v_event_created_by IS NULL THEN
+        RETURN TRUE;  -- Only allows anon participants in anon events
+    END IF;
+END IF;
+RETURN FALSE;
+```
 
-### Files to edit
-- **`src/components/create-event/OrganizerDashboard.tsx`** — add `max-w-5xl mx-auto` wrapper, translate all hardcoded English strings
-- **`src/components/create-event/AIProgressStepper.tsx`** — translate descriptions using `language` check
-- **`src/components/event/ConstraintBadge.tsx`** — translate tooltip text using `useLanguage`
-- **`src/components/event/PulseVoting.tsx`** — translate ConstraintBadge fallback labels, add "Étape 2" divider in organizer availability tab
+## Fix
+
+**Database migration**: Update the `owns_participant` function to allow anonymous participants to act on their own data regardless of who created the event. Change the anonymous participant block to return `TRUE` without checking `created_by`:
+
+```sql
+IF v_user_id IS NULL THEN
+    RETURN TRUE;
+END IF;
+```
+
+**Security tradeoff**: This means any unauthenticated request with a valid participant ID can act as that participant. This is the same trust model already used for anonymous events and is acceptable since anonymous participant IDs are UUIDs only known to the client that joined.
+
+**No frontend changes needed** -- the AvailabilityPanel and vote components already have the correct Supabase calls; they just fail at the RLS layer.
 
