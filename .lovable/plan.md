@@ -1,33 +1,28 @@
 
 
-## Problem
+## Plan: Dynamic Booking & Airbnb Search Links in Scenario Cards
 
-When an anonymous participant joins an event created by an authenticated user, they cannot save votes (availability, scenario votes, etc.). The error is "Error saving vote."
+### Current State
+`ScenarioCard.tsx` only shows booking links if `metadata.accommodation.booking_url` or `airbnb_url` are pre-populated. Most scenarios don't have these, so links rarely appear.
 
-**Root cause**: The `owns_participant` database function controls write access for votes. For anonymous participants (`user_id IS NULL`), it only returns `TRUE` if the event was also created anonymously (`created_by IS NULL`). When the event was created by an authenticated user, anonymous participants are blocked by RLS.
+`AccommodationCard.tsx` already has helper functions (`generateBookingUrl`, `generateAirbnbUrl`) that build search URLs from location, check-in, and check-out data.
 
-Relevant code in `owns_participant`:
-```sql
-IF v_user_id IS NULL THEN
-    SELECT created_by INTO v_event_created_by FROM events WHERE id = v_event_id;
-    IF v_event_created_by IS NULL THEN
-        RETURN TRUE;  -- Only allows anon participants in anon events
-    END IF;
-END IF;
-RETURN FALSE;
-```
+### Changes
 
-## Fix
+**1. Extract URL generators to a shared utility**
 
-**Database migration**: Update the `owns_participant` function to allow anonymous participants to act on their own data regardless of who created the event. Change the anonymous participant block to return `TRUE` without checking `created_by`:
+Move `generateBookingUrl` and `generateAirbnbUrl` from `AccommodationCard.tsx` into a new file `src/lib/bookingLinks.ts` so both components can use them.
 
-```sql
-IF v_user_id IS NULL THEN
-    RETURN TRUE;
-END IF;
-```
+**2. Update `ScenarioCard.tsx`**
 
-**Security tradeoff**: This means any unauthenticated request with a valid participant ID can act as that participant. This is the same trust model already used for anonymous events and is acceptable since anonymous participant IDs are UUIDs only known to the client that joined.
+- Import the shared URL generators
+- When `metadata.accommodation.booking_url` / `airbnb_url` exist, use those (current behavior)
+- Otherwise, if `locationInfo.townName` and `scenario.suggested_date` exist, dynamically generate search URLs using the town name and date (derive a weekend check-in/check-out from `suggested_date`)
+- This makes the "Explorer l'hébergement" section appear on virtually all scenarios that have location data
 
-**No frontend changes needed** -- the AvailabilityPanel and vote components already have the correct Supabase calls; they just fail at the RLS layer.
+**3. Keep `AccommodationCard.tsx` working**
+
+- Replace the inline functions with imports from the shared utility. No behavior change.
+
+### No backend changes needed
 
