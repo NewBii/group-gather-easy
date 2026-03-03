@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Calendar, MapPin, Clock, Check, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { TaskSplitter } from './TaskSplitter';
 import { AIProgressStepper } from '../create-event/AIProgressStepper';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { Step3HelpersWanted } from '../create-event/Step3HelpersWanted';
 import { format, parseISO } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 
@@ -24,7 +25,19 @@ interface LockdownViewProps {
   winningScenario?: WinningScenario;
   participantId?: string;
   participantName?: string;
+  isOrganizer?: boolean;
 }
+
+const HelpersWantedSection = () => {
+  const { language } = useLanguage();
+  const [tasks, setTasks] = useState<string[]>([]);
+  return (
+    <div className="space-y-3">
+      <h3 className="text-lg font-semibold">🙌 {language === 'fr' ? 'Répartir les tâches' : 'Split the tasks'}</h3>
+      <Step3HelpersWanted tasks={tasks} setTasks={setTasks} />
+    </div>
+  );
+};
 
 export const LockdownView = ({
   eventId,
@@ -32,6 +45,7 @@ export const LockdownView = ({
   winningScenario,
   participantId,
   participantName,
+  isOrganizer,
 }: LockdownViewProps) => {
   const { t, language } = useLanguage();
   const locale = language === 'fr' ? fr : enUS;
@@ -134,6 +148,11 @@ export const LockdownView = ({
         participantId={participantId}
         participantName={participantName}
       />
+
+      {/* Helpers Wanted - Organizer only */}
+      {isOrganizer && (
+        <HelpersWantedSection />
+      )}
     </div>
   );
 };
