@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { generateBookingUrl, generateAirbnbUrl, deriveWeekendDates } from '@/lib/bookingLinks';
 
 interface SpecialTrait {
   type: string;
@@ -133,9 +134,16 @@ export const ScenarioCard = ({
     infoChips.push(`${vibeEmojis[vibe]} ${vibeLabels[lang]?.[vibe] || vibe}`);
   }
 
-  // Build booking links
-  const bookingUrl = accommodation?.booking_url;
-  const airbnbUrl = accommodation?.airbnb_url;
+  // Build booking links — use pre-stored URLs or dynamically generate from location + date
+  let bookingUrl = accommodation?.booking_url;
+  let airbnbUrl = accommodation?.airbnb_url;
+
+  if (!bookingUrl && !airbnbUrl && locationInfo?.townName && scenario.suggested_date) {
+    const { checkIn, checkOut } = deriveWeekendDates(scenario.suggested_date);
+    bookingUrl = generateBookingUrl(locationInfo.townName, checkIn, checkOut);
+    airbnbUrl = generateAirbnbUrl(locationInfo.townName, checkIn, checkOut);
+  }
+
   const hasBookingLinks = bookingUrl || airbnbUrl;
 
   return (

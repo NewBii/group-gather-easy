@@ -1,9 +1,10 @@
-import { Home, ExternalLink, CheckCircle2, Building2, Tent, Castle, Euro } from 'lucide-react';
+import { Home, ExternalLink, CheckCircle2, Building2, Tent, Castle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { generateBookingUrl, generateAirbnbUrl } from '@/lib/bookingLinks';
 
 export interface AccommodationInfo {
   isLocked: boolean;
@@ -58,41 +59,6 @@ const budgetTierLabels = {
   premium: '€€€ Premium',
 };
 
-const generateBookingUrl = (
-  location: string,
-  checkIn: string,
-  checkOut: string,
-  adults: number = 10,
-  children: number = 0
-): string => {
-  const baseUrl = 'https://www.booking.com/searchresults.html';
-  const params = new URLSearchParams({
-    ss: location,
-    checkin: checkIn,
-    checkout: checkOut,
-    group_adults: adults.toString(),
-    group_children: children.toString(),
-    no_rooms: Math.ceil((adults + children) / 4).toString(),
-  });
-  return `${baseUrl}?${params.toString()}`;
-};
-
-const generateAirbnbUrl = (
-  location: string,
-  checkIn: string,
-  checkOut: string,
-  adults: number = 10,
-  children: number = 0
-): string => {
-  const baseUrl = 'https://www.airbnb.com/s/' + encodeURIComponent(location) + '/homes';
-  const params = new URLSearchParams({
-    checkin: checkIn,
-    checkout: checkOut,
-    adults: adults.toString(),
-    children: children.toString(),
-  });
-  return `${baseUrl}?${params.toString()}`;
-};
 
 export const AccommodationCard = ({
   accommodation,
