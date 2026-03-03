@@ -19,7 +19,7 @@ const pendingClaimSchema = z.object({
 });
 
 export const EventCreatedPrompt = ({ eventSlug, eventId, eventTitle = 'Event' }: EventCreatedPromptProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -206,9 +206,16 @@ export const EventCreatedPrompt = ({ eventSlug, eventId, eventTitle = 'Event' }:
         </div>
       )}
 
-      <Button variant="default" onClick={handleContinueAsGuest}>
-        {isAuthenticated ? t.eventCreated.viewEvent : t.eventCreated.continueAsGuest}
-      </Button>
+      <div className="space-y-2">
+        <Button variant="default" onClick={handleContinueAsGuest}>
+          {isAuthenticated ? t.eventCreated.viewEvent : t.eventCreated.continueAsGuest}
+        </Button>
+        <p className="text-xs text-muted-foreground text-center">
+          {language === 'fr'
+            ? 'Vous pourrez suivre les votes depuis la page de l\'événement.'
+            : 'You can track votes from the event page.'}
+        </p>
+      </div>
     </div>
   );
 };

@@ -74,7 +74,7 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [aiPhase, setAiPhase] = useState<'spark' | 'pulse' | 'lockdown'>('spark');
   const [hasLaunched, setHasLaunched] = useState(() => {
-    return sessionStorage.getItem(`launched-${eventId}`) === 'true';
+    return localStorage.getItem(`launched-${eventId}`) === 'true';
   });
   const [copied, setCopied] = useState(false);
 
@@ -410,7 +410,7 @@ export const OrganizerDashboard = ({ eventId, eventSlug, eventTitle, userId }: O
 
   const handleLaunch = () => {
     setHasLaunched(true);
-    sessionStorage.setItem(`launched-${eventId}`, 'true');
+    localStorage.setItem(`launched-${eventId}`, 'true');
   };
 
   const shareUrl = `${window.location.origin}/event/${eventSlug}`;

@@ -18,6 +18,7 @@ import { AIProgressStepper } from '@/components/create-event/AIProgressStepper';
 import { PulseVoting } from '@/components/event/PulseVoting';
 import { LockdownView } from '@/components/event/LockdownView';
 import { OrganizerTaskManager } from '@/components/event/OrganizerTaskManager';
+import { OrganizerDashboard } from '@/components/create-event/OrganizerDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { ParticipantNudge } from '@/components/event/ParticipantNudge';
 import { useToast } from '@/hooks/use-toast';
@@ -453,7 +454,14 @@ const Event = () => {
           <EventHeader event={event} />
 
           {aiPhase === 'lockdown' && winningScenario ? (
-            <LockdownView eventId={event.id} eventTitle={event.title} winningScenario={winningScenario} participantId={currentParticipant?.id} participantName={currentParticipant?.name} />
+            <LockdownView eventId={event.id} eventTitle={event.title} winningScenario={winningScenario} participantId={currentParticipant?.id} participantName={currentParticipant?.name} isOrganizer={!!isOrganizer} />
+          ) : isOrganizer ? (
+            <OrganizerDashboard
+              eventId={event.id}
+              eventSlug={event.unique_slug}
+              eventTitle={event.title}
+              userId={user?.id}
+            />
           ) : (
             <>
               <AIProgressStepper currentPhase="pulse" />
@@ -474,12 +482,14 @@ const Event = () => {
               <div className="lg:hidden">
                 <ParticipantsList participants={participants} currentParticipantId={currentParticipant?.id} />
               </div>
-              <ParticipantNudge
-                eventId={event.id}
-                eventSlug={event.unique_slug}
-                isAuthenticated={!!user}
-                hasInteracted={hasInteracted}
-              />
+              {!isOrganizer && (
+                <ParticipantNudge
+                  eventId={event.id}
+                  eventSlug={event.unique_slug}
+                  isAuthenticated={!!user}
+                  hasInteracted={hasInteracted}
+                />
+              )}
             </>
           )}
         </div>
@@ -509,12 +519,14 @@ const Event = () => {
           </div>
         </div>
         {isOrganizer && <OrganizerTaskManager eventId={event.id} />}
-        <ParticipantNudge
-          eventId={event.id}
-          eventSlug={event.unique_slug}
-          isAuthenticated={!!user}
-          hasInteracted={hasInteracted}
-        />
+        {!isOrganizer && (
+          <ParticipantNudge
+            eventId={event.id}
+            eventSlug={event.unique_slug}
+            isAuthenticated={!!user}
+            hasInteracted={hasInteracted}
+          />
+        )}
       </div>
     </div>
   );
