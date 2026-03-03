@@ -1,28 +1,45 @@
 
 
-## Plan: Dynamic Booking & Airbnb Search Links in Scenario Cards
+## Plan: Structural Fixes Across CreateEvent, Event, and OrganizerDashboard
 
-### Current State
-`ScenarioCard.tsx` only shows booking links if `metadata.accommodation.booking_url` or `airbnb_url` are pre-populated. Most scenarios don't have these, so links rarely appear.
+This is a solid set of fixes that addresses real UX gaps. Here's the plan:
 
-`AccommodationCard.tsx` already has helper functions (`generateBookingUrl`, `generateAirbnbUrl`) that build search URLs from location, check-in, and check-out data.
+### 1. Unify Organizer Dashboard in Event.tsx
 
-### Changes
+In the AI Concierge section of `Event.tsx` (line ~457), when `isOrganizer` is true and `aiPhase !== 'lockdown'`, replace the raw `PulseVoting` render with `OrganizerDashboard`. This gives the organizer the same dashboard experience when returning to the event page.
 
-**1. Extract URL generators to a shared utility**
+- Import `OrganizerDashboard` (already imported at line 20 via `OrganizerTaskManager`, need to add the create-event one)
+- Wrap the non-lockdown branch: if `isOrganizer`, render `OrganizerDashboard`; otherwise render current `PulseVoting` block
 
-Move `generateBookingUrl` and `generateAirbnbUrl` from `AccommodationCard.tsx` into a new file `src/lib/bookingLinks.ts` so both components can use them.
+### 2. Fix Launch Screen Persistence
 
-**2. Update `ScenarioCard.tsx`**
+In `OrganizerDashboard.tsx`, change `sessionStorage` to `localStorage` for the launch state (lines 77 and 413). Two spots:
+- `sessionStorage.getItem(`launched-${eventId}`)` → `localStorage.getItem(...)`
+- `sessionStorage.setItem(`launched-${eventId}`, 'true')` → `localStorage.setItem(...)`
 
-- Import the shared URL generators
-- When `metadata.accommodation.booking_url` / `airbnb_url` exist, use those (current behavior)
-- Otherwise, if `locationInfo.townName` and `scenario.suggested_date` exist, dynamically generate search URLs using the town name and date (derive a weekend check-in/check-out from `suggested_date`)
-- This makes the "Explorer l'hébergement" section appear on virtually all scenarios that have location data
+### 3. Hide ParticipantNudge for Organizer
 
-**3. Keep `AccommodationCard.tsx` working**
+In `Event.tsx`, wrap both `ParticipantNudge` renders (lines 477-482 and 512-517) with `{!isOrganizer && (...)}`.
 
-- Replace the inline functions with imports from the shared utility. No behavior change.
+### 4. Move Step3HelpersWanted to LockdownView
 
-### No backend changes needed
+- Remove any reference to `Step3HelpersWanted` from `CreateEvent.tsx` (currently not referenced there, so no change needed)
+- In `LockdownView.tsx`, import `Step3HelpersWanted` and render it below the `TaskSplitter` section, only when the viewer is the organizer. Add a section title "🙌 Répartir les tâches"
+- `LockdownView` needs a new `isOrganizer` prop
+- In `Event.tsx`, pass `isOrganizer` to `LockdownView`
+- For Manual mode, wrap `OrganizerTaskManager` (line 511) to also ensure it's below all voting sections (already is) and only shown to organizer (already is)
+
+### 5. Add Manual Mode Post-Creation Note
+
+In `EventCreatedPrompt.tsx`, below the primary CTA button (line ~156), add a muted helper text:
+```
+"Vous pourrez suivre les votes depuis la page de l'événement."
+```
+Style: `text-xs text-muted-foreground text-center mt-2`
+
+### Files to edit
+- `src/pages/Event.tsx` — changes 1, 3, 4
+- `src/components/create-event/OrganizerDashboard.tsx` — change 2
+- `src/components/event/LockdownView.tsx` — change 4
+- `src/components/EventCreatedPrompt.tsx` — change 5
 
