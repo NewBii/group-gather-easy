@@ -1,45 +1,36 @@
 
 
-## Plan: Structural Fixes Across CreateEvent, Event, and OrganizerDashboard
+## Plan: Accommodation Locking in Lockdown View
 
-This is a solid set of fixes that addresses real UX gaps. Here's the plan:
+Currently, the `AccommodationCard` already supports a "locked" state (with `isLocked`, `lockedName`, `lockedDescription`), but there's no UI to actually set this info. The accommodation data lives in the winning scenario's `metadata.accommodation` JSON — it's never editable after AI generation.
 
-### 1. Unify Organizer Dashboard in Event.tsx
+### Approach
 
-In the AI Concierge section of `Event.tsx` (line ~457), when `isOrganizer` is true and `aiPhase !== 'lockdown'`, replace the raw `PulseVoting` render with `OrganizerDashboard`. This gives the organizer the same dashboard experience when returning to the event page.
+Add an **Accommodation section** to `LockdownView` that:
+- For **everyone**: shows the accommodation info from the winning scenario metadata (name, style, Booking/Airbnb search links derived from location + date)
+- For the **organizer**: adds an inline form to "lock" accommodation — enter a name, optional description, and optional URL. This writes to the event's `final_location` JSONB field (which already exists and is updatable by organizers) under an `accommodation` key.
+- Once locked, all participants see the confirmed accommodation with a green "Organizer's Choice" badge (reusing `AccommodationCard`'s locked display)
 
-- Import `OrganizerDashboard` (already imported at line 20 via `OrganizerTaskManager`, need to add the create-event one)
-- Wrap the non-lockdown branch: if `isOrganizer`, render `OrganizerDashboard`; otherwise render current `PulseVoting` block
+### Changes
 
-### 2. Fix Launch Screen Persistence
+**1. `src/components/event/LockdownView.tsx`**
 
-In `OrganizerDashboard.tsx`, change `sessionStorage` to `localStorage` for the launch state (lines 77 and 413). Two spots:
-- `sessionStorage.getItem(`launched-${eventId}`)` → `localStorage.getItem(...)`
-- `sessionStorage.setItem(`launched-${eventId}`, 'true')` → `localStorage.setItem(...)`
+- Expand the `WinningScenario` interface to include `metadata` (with `location`, `accommodation`)
+- Add an `AccommodationLockdownSection` below the verdict card:
+  - If `event.final_location?.accommodation` exists (locked), render `AccommodationCard` in locked mode
+  - Otherwise, show Booking.com + Airbnb search links (dynamic, from town + date) so participants can browse
+  - If `isOrganizer`, show a "Lock accommodation" button that expands a small form: name, description, link. On submit, update `events.final_location` JSONB with `{ accommodation: { name, description, url } }`
+- Pass `event` object to `LockdownView` (or just the relevant fields)
 
-### 3. Hide ParticipantNudge for Organizer
+**2. `src/pages/Event.tsx`**
 
-In `Event.tsx`, wrap both `ParticipantNudge` renders (lines 477-482 and 512-517) with `{!isOrganizer && (...)}`.
+- Pass additional props to `LockdownView`: the event's `final_location` and a callback to update it (or pass the full event object)
 
-### 4. Move Step3HelpersWanted to LockdownView
+**3. No database changes needed**
 
-- Remove any reference to `Step3HelpersWanted` from `CreateEvent.tsx` (currently not referenced there, so no change needed)
-- In `LockdownView.tsx`, import `Step3HelpersWanted` and render it below the `TaskSplitter` section, only when the viewer is the organizer. Add a section title "🙌 Répartir les tâches"
-- `LockdownView` needs a new `isOrganizer` prop
-- In `Event.tsx`, pass `isOrganizer` to `LockdownView`
-- For Manual mode, wrap `OrganizerTaskManager` (line 511) to also ensure it's below all voting sections (already is) and only shown to organizer (already is)
-
-### 5. Add Manual Mode Post-Creation Note
-
-In `EventCreatedPrompt.tsx`, below the primary CTA button (line ~156), add a muted helper text:
-```
-"Vous pourrez suivre les votes depuis la page de l'événement."
-```
-Style: `text-xs text-muted-foreground text-center mt-2`
+The `events.final_location` JSONB column already exists and organizers can already update their events via existing RLS policies.
 
 ### Files to edit
-- `src/pages/Event.tsx` — changes 1, 3, 4
-- `src/components/create-event/OrganizerDashboard.tsx` — change 2
-- `src/components/event/LockdownView.tsx` — change 4
-- `src/components/EventCreatedPrompt.tsx` — change 5
+- `src/components/event/LockdownView.tsx` — add accommodation section with lock form
+- `src/pages/Event.tsx` — pass extra props to LockdownView
 
