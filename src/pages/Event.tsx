@@ -454,7 +454,7 @@ const Event = () => {
           <EventHeader event={event} />
 
           {aiPhase === 'lockdown' && winningScenario ? (
-            <LockdownView eventId={event.id} eventTitle={event.title} winningScenario={winningScenario} participantId={currentParticipant?.id} participantName={currentParticipant?.name} isOrganizer={!!isOrganizer} />
+            <LockdownView eventId={event.id} eventTitle={event.title} winningScenario={winningScenario} participantId={currentParticipant?.id} participantName={currentParticipant?.name} isOrganizer={!!isOrganizer} finalLocation={eventData?.final_location as any} onRefetch={refetch} participantsCount={participants.length} />
           ) : isOrganizer ? (
             <OrganizerDashboard
               eventId={event.id}
